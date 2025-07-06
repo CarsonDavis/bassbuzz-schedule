@@ -277,12 +277,11 @@ class BassPracticeTracker {
                 dayDiv.classList.add('today');
             }
             
-            if (practiceTime > 0) {
-                if (practiceTime >= 1800) { // 30 minutes
-                    dayDiv.classList.add('long-practice');
-                } else {
-                    dayDiv.classList.add('practice-day');
-                }
+            // Apply gradient color based on practice time
+            const practiceColor = this.getPracticeColor(practiceMinutes);
+            if (practiceColor) {
+                dayDiv.style.backgroundColor = practiceColor;
+                dayDiv.style.color = 'white'; // Ensure text is readable
             }
             
             // Check if this is the target completion date
@@ -455,6 +454,17 @@ class BassPracticeTracker {
         this.renderCalendar();
         this.updateTodayStats();
         this.calculateTargetDate();
+    }
+
+    getPracticeColor(minutes) {
+        if (minutes === 0) return null; // Default background
+        
+        // Smooth scaling: 1-60 minutes = full color range
+        const intensity = Math.min(minutes / 60, 1);
+        const saturation = 40 + (intensity * 30); // 40% to 70%
+        const lightness = 70 - (intensity * 35);  // 70% to 35%
+        
+        return `hsl(120, ${saturation}%, ${lightness}%)`;
     }
 }
 
