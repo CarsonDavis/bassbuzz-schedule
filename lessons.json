@@ -1,0 +1,212 @@
+{
+  "modules": [
+    {
+      "id": 1,
+      "title": "Let's Rock 🤘",
+      "duration": "2 hrs 30 min",
+      "lessons": [
+        "Get Tuned and Ready to Play",
+        "Instant Badass on the E String",
+        "Alternating Plucking",
+        "Sound Legit with Clean Fretting",
+        "Killin' It with Quarter Notes",
+        "Runnin' With The Devil by Van Halen"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Learn Your Favorite Songs 🎶",
+      "duration": "2 hrs 10 min",
+      "lessons": [
+        "Intro to Tab and Eighth Notes",
+        "Epic Eighth & Whole Notes",
+        "Headbangin' Eighth & Half Notes",
+        "Rootsy Rock with Eighth & Quarter Notes",
+        "Funky New Eighth Note Rhythm",
+        "Good Times Bad Times by Led Zeppelin"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Rock Solid Rhythm 👊",
+      "duration": "2 hrs 0 min",
+      "lessons": [
+        "Child In Time by Deep Purple",
+        "Understanding the 12 Note System",
+        "Mellow Jam with New Eighth Note Rhythm",
+        "Hip Hop Funkin' with More Eighth Notes",
+        "Sweet Home Alabama by Lynyrd Skynyrd"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "String Crossing Ninja 😈",
+      "duration": "2 hrs 40 min",
+      "lessons": [
+        "Chugging – Now You're a Bassist",
+        "With Or Without You by U2",
+        "More Soulful String Crossing",
+        "Even More String Crossing",
+        "All Together Now – String Crossing Challenge",
+        "Billie Jean by Michael Jackson"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Secrets Of Sheet Music 🎼",
+      "duration": "3 hrs 0 min",
+      "lessons": [
+        "Music Reading Basics",
+        "Reading Rhythm",
+        "More Rhythm Reading",
+        "Almost There! More Reading Details",
+        "Intro to Musical Intervals",
+        "Gimme Some Lovin' by Spencer Davis Group"
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Badass Speed 🚀",
+      "duration": "2 hrs 10 min",
+      "lessons": [
+        "New Notes on the E String",
+        "Finish Note Memorizing on the A String",
+        "Cranking Up Plucking Speed",
+        "Badass Coordination Builder",
+        "Thunderstruck by AC/DC"
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Major Scale Master 🎹",
+      "duration": "2 hrs 40 min",
+      "lessons": [
+        "Intro To Scales + Free Jazz Exploration Hour",
+        "The Major Scale",
+        "Melodic Improv with the Major Scale",
+        "Playing in Different Keys",
+        "Improvising Major Scale Bass Lines",
+        "In The Midnight Hour by Wilson Pickett"
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Smashing Syncopation 👊",
+      "duration": "2 hrs 20 min",
+      "lessons": [
+        "Dreams by Fleetwood Mac",
+        "All Star by Smash Mouth",
+        "Chords and Arpeggios Demystified",
+        "Improv with Major Triad Arpeggios",
+        "Chord Progressions with Pride And Joy by Stevie Ray Vaughan",
+        "Don't Stop Believin' by Journey"
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Minor Scale Master ☔️",
+      "duration": "3 hrs 10 min",
+      "lessons": [
+        "The Minor Scale",
+        "Add Emotion With Dynamics",
+        "Minor Scale Improv",
+        "Reggae Jam with Minor Triads",
+        "Understand Music Better with Diatonic Chord Progressions",
+        "Roxanne by The Police",
+        "Feel Good Inc. by Gorillaz"
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Tackling Time Signatures ⌚️",
+      "duration": "2 hrs 50 min",
+      "lessons": [
+        "3/4 Time with I'm So Lonesome I Could Cry by Hank Williams",
+        "6/8 Time with House Of The Rising Sun by The Animals",
+        "12/8 Time with Dazed And Confused by Led Zeppelin",
+        "Triples with London Calling by The Clash",
+        "Shuffle Feel with Rock Me Baby by Otis Redding",
+        "More Triplets with Don't Chain My Heart by Toto"
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Bass Player Secrets 🤫",
+      "duration": "2 hrs 30 min",
+      "lessons": [
+        "Folsom Prison Blues by Johnny Cash",
+        "Song For My Father by Horace Silver",
+        "Papa's Got A Brand New Bag by James Brown",
+        "My Girl by The Temptations",
+        "Pretty Pink Ribbon by Cake"
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Even More Secrets 👻",
+      "duration": "2 hrs 50 min",
+      "lessons": [
+        "Double Pluck Octaves",
+        "Single Pluck Octaves Disco Jam",
+        "My Sharona by The Knack",
+        "Create Drama With Register Changes",
+        "Root Fifth Octave with Red Clay by Freddie Hubbard",
+        "Under The Bridge by Red Hot Chili Peppers"
+      ]
+    },
+    {
+      "id": 13,
+      "title": "The Secretest Secrets 😎",
+      "duration": "2 hrs 40 min",
+      "lessons": [
+        "Papa Was A Rollin' Stone by The Temptations",
+        "Boogie Oogie Oogie by A Taste Of Honey",
+        "Smoke On The Water by Deep Purple",
+        "Lovefool by The Cardigans",
+        "Stand By Your Man by Tammy Wynette",
+        "Hey by The Pixies"
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Ultimate Groove Workout 💪",
+      "duration": "1 hr 50 min",
+      "lessons": [
+        "Intro to Ultimate Groove Workout",
+        "More Ultimate Groove Workout",
+        "Playing A Groove with the Ultimate Groove Workout",
+        "Improvising with the Ultimate Groove Workout",
+        "I Feel Good by James Brown"
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Jam With The Band 🎸",
+      "duration": "3 hrs 10 min",
+      "lessons": [
+        "Vamping with the Drummer",
+        "Creating a Chord Progression",
+        "Jumping Into a Guitar Vamp",
+        "Following a Chord Progression",
+        "Epic Final Jam",
+        "You Did It! Congrats & Final Quiz"
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Bonus Lessons Masterclass Module 🏆",
+      "duration": "2 hrs 30 min",
+      "lessons": [
+        "Pick Bass Masterclass",
+        "Slap Bass Masterclass",
+        "Advanced Rhythm with 16th Notes",
+        "Super Shredder Advanced Bass Technique",
+        "Pentatonics & Blues Scale Basics",
+        "Ear Training – the Musician's Secret Weapon",
+        "Going Forward – How And What To Practice"
+      ]
+    }
+  ],
+  "totalLessons": 92,
+  "totalModules": 16
+}

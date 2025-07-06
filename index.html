@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bass Practice Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="timer-header">
+        <div class="timer-container">
+            <h1>🎸 Bass Practice Tracker</h1>
+            <div class="timer-section">
+                <div class="timer-display" id="timerDisplay">00:00:00</div>
+                <div class="timer-controls">
+                    <button id="startBtn" class="btn btn-primary">Start</button>
+                    <button id="pauseBtn" class="btn btn-secondary">Pause</button>
+                    <button id="resetBtn" class="btn btn-danger">Reset</button>
+                </div>
+                <div class="today-stats">
+                    <span>Today's Practice: <span id="todayTotal">0 min</span></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <aside class="sidebar">
+            <div class="course-progress">
+                <h2>Course Progress</h2>
+                <div class="overall-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="overallProgress"></div>
+                    </div>
+                    <span id="progressText">0 / 92 lessons completed</span>
+                </div>
+                
+                <div class="modules-container" id="modulesContainer">
+                    <!-- Modules will be populated by JavaScript -->
+                </div>
+            </div>
+        </aside>
+
+        <section class="calendar-section">
+            <div class="calendar-header">
+                <button id="prevMonth" class="btn btn-nav">&lt;</button>
+                <h2 id="currentMonth">January 2025</h2>
+                <button id="nextMonth" class="btn btn-nav">&gt;</button>
+            </div>
+            
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- Calendar will be populated by JavaScript -->
+            </div>
+            
+            <div class="calendar-legend">
+                <div class="legend-item">
+                    <span class="legend-color practice-day"></span>
+                    <span>Practice Day</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color long-practice"></span>
+                    <span>Long Practice (>30 min)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color target-date"></span>
+                    <span>Estimated Completion</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
