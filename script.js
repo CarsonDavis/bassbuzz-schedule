@@ -117,17 +117,27 @@ class BassPracticeTracker {
 
     renderModules() {
         const container = document.getElementById('modulesContainer');
+        
+        // Save which modules are currently open
+        const openModules = new Set();
+        container.querySelectorAll('.module-content.active').forEach(content => {
+            const moduleId = content.closest('.module').dataset.moduleId;
+            if (moduleId) openModules.add(moduleId);
+        });
+        
         container.innerHTML = '';
 
         this.lessons.forEach(module => {
             const moduleDiv = document.createElement('div');
             moduleDiv.className = 'module';
+            moduleDiv.dataset.moduleId = module.id;
             
             const completedLessons = module.lessons.filter(lesson => 
                 this.progress.lessons[`${module.id}-${lesson}`]
             ).length;
             
             const progressPercent = (completedLessons / module.lessons.length) * 100;
+            const isOpen = openModules.has(module.id.toString());
 
             moduleDiv.innerHTML = `
                 <div class="module-header" onclick="this.parentElement.querySelector('.module-content').classList.toggle('active')">
@@ -137,7 +147,7 @@ class BassPracticeTracker {
                     </div>
                     <div class="module-progress">${completedLessons}/${module.lessons.length}</div>
                 </div>
-                <div class="module-content">
+                <div class="module-content ${isOpen ? 'active' : ''}">
                     ${module.lessons.map(lesson => `
                         <div class="lesson-item ${this.progress.lessons[`${module.id}-${lesson}`] ? 'completed' : ''}">
                             <input type="checkbox" class="lesson-checkbox" 
