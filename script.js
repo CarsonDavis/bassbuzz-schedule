@@ -249,12 +249,25 @@ class BassPracticeTracker {
             
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day';
-            dayDiv.textContent = date.getDate();
             
             const dateStr = date.toISOString().split('T')[0];
             const isCurrentMonth = date.getMonth() === this.currentMonth;
             const isToday = dateStr === new Date().toISOString().split('T')[0];
             const practiceTime = this.progress.practiceLog[dateStr] || 0;
+            const practiceMinutes = Math.floor(practiceTime / 60);
+            
+            // Create date number and minutes display
+            dayDiv.innerHTML = `
+                <span class="date-number">${date.getDate()}</span>
+                ${practiceMinutes > 0 ? `<span class="practice-minutes">${practiceMinutes}m</span>` : ''}
+            `;
+            
+            // Add click handler for editing practice time (except for day headers)
+            if (isCurrentMonth) {
+                dayDiv.addEventListener('click', () => {
+                    this.editPracticeTime(dateStr, practiceMinutes);
+                });
+            }
             
             if (!isCurrentMonth) {
                 dayDiv.classList.add('other-month');
@@ -313,6 +326,135 @@ class BassPracticeTracker {
                 this.targetDate = targetDate.toISOString().split('T')[0];
             }
         }
+    }
+
+    editPracticeTime(dateStr, currentMinutes) {
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const dateDisplay = dateObj.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        this.showEditModal(dateStr, dateDisplay, currentMinutes);
+    }
+
+    showEditModal(dateStr, dateDisplay, currentMinutes) {
+        const modal = document.getElementById('editModal');
+        const modalDate = document.getElementById('modalDate');
+        const practiceInput = document.getElementById('practiceInput');
+        const modalError = document.getElementById('modalError');
+        const modalSave = document.getElementById('modalSave');
+        const modalCancel = document.getElementById('modalCancel');
+        const modalClose = document.getElementById('modalClose');
+
+        // Set modal content
+        modalDate.textContent = dateDisplay;
+        practiceInput.value = currentMinutes;
+        modalError.classList.remove('show');
+        modalError.textContent = '';
+
+        // Show modal
+        modal.classList.add('active');
+        setTimeout(() => practiceInput.focus(), 100);
+
+        // Handle save
+        const handleSave = () => {
+            const newMinutes = parseInt(practiceInput.value);
+            
+            if (isNaN(newMinutes) || newMinutes < 0) {
+                this.showModalError('Please enter a valid number of minutes (0 or greater)');
+                return;
+            }
+            
+            if (newMinutes > 600) {
+                this.showModalError('Practice time cannot exceed 10 hours (600 minutes)');
+                return;
+            }
+            
+            this.updatePracticeTime(dateStr, newMinutes);
+            this.hideEditModal();
+        };
+
+        // Handle cancel/close
+        const handleCancel = () => {
+            this.hideEditModal();
+        };
+
+        // Event listeners
+        modalSave.onclick = handleSave;
+        modalCancel.onclick = handleCancel;
+        modalClose.onclick = handleCancel;
+
+        // Keyboard shortcuts
+        const handleKeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSave();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                handleCancel();
+            }
+        };
+
+        // Click outside to close
+        const handleOutsideClick = (e) => {
+            if (e.target === modal) {
+                handleCancel();
+            }
+        };
+
+        // Add event listeners
+        document.addEventListener('keydown', handleKeydown);
+        modal.addEventListener('click', handleOutsideClick);
+
+        // Store cleanup function
+        this.modalCleanup = () => {
+            document.removeEventListener('keydown', handleKeydown);
+            modal.removeEventListener('click', handleOutsideClick);
+            modalSave.onclick = null;
+            modalCancel.onclick = null;
+            modalClose.onclick = null;
+        };
+    }
+
+    hideEditModal() {
+        const modal = document.getElementById('editModal');
+        modal.classList.remove('active');
+        
+        // Cleanup event listeners
+        if (this.modalCleanup) {
+            this.modalCleanup();
+            this.modalCleanup = null;
+        }
+    }
+
+    showModalError(message) {
+        const modalError = document.getElementById('modalError');
+        modalError.textContent = message;
+        modalError.classList.add('show');
+    }
+
+    updatePracticeTime(dateStr, newMinutes) {
+        // Convert minutes to seconds and update practice log
+        const newSeconds = newMinutes * 60;
+        const oldSeconds = this.progress.practiceLog[dateStr] || 0;
+        
+        if (newSeconds === 0) {
+            // Remove the entry if setting to 0
+            delete this.progress.practiceLog[dateStr];
+        } else {
+            this.progress.practiceLog[dateStr] = newSeconds;
+        }
+        
+        // Update total practice time
+        this.progress.totalPracticeTime += (newSeconds - oldSeconds);
+        
+        // Save and refresh displays
+        this.saveProgress();
+        this.renderCalendar();
+        this.updateTodayStats();
+        this.calculateTargetDate();
     }
 }
 

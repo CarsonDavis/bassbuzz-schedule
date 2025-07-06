@@ -266,6 +266,7 @@ body {
 .calendar-day {
     aspect-ratio: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     background-color: #34495e;
@@ -274,6 +275,19 @@ body {
     transition: all 0.2s ease;
     font-size: 0.9em;
     color: #ecf0f1;
+    padding: 2px;
+}
+
+.date-number {
+    font-weight: bold;
+    line-height: 1;
+}
+
+.practice-minutes {
+    font-size: 0.7em;
+    color: #bdc3c7;
+    margin-top: 2px;
+    line-height: 1;
 }
 
 .calendar-day:hover {
@@ -412,5 +426,173 @@ body {
     .calendar-legend {
         flex-direction: column;
         align-items: center;
+    }
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: #2c3e50;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 400px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #34495e;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #ecf0f1;
+    font-size: 1.4em;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #95a5a6;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-body p {
+    margin: 0 0 20px 0;
+    color: #bdc3c7;
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #ecf0f1;
+    font-weight: 500;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #34495e;
+    border-radius: 6px;
+    background-color: #34495e;
+    color: #ecf0f1;
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.modal-hint {
+    color: #95a5a6;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+.modal-error {
+    color: #e74c3c;
+    font-size: 0.9em;
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    display: none;
+}
+
+.modal-error.show {
+    display: block;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px 25px;
+    border-top: 1px solid #34495e;
+}
+
+.modal-footer .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+}
+
+/* Modal Responsive */
+@media (max-width: 480px) {
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 15px 20px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
     }
 }
