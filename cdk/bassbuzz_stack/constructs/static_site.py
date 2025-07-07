@@ -30,9 +30,7 @@ class StaticSiteConstruct(Construct):
             public_read_access=False,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
-            website_index_document="index.html",
-            website_error_document="index.html"
+            auto_delete_objects=True
         )
 
         # Origin Access Identity for CloudFront
@@ -48,7 +46,7 @@ class StaticSiteConstruct(Construct):
         self.distribution = cloudfront.Distribution(
             self, "Distribution",
             default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.S3Origin(
+                origin=origins.S3BucketOrigin.with_origin_access_identity(
                     self.bucket,
                     origin_access_identity=origin_access_identity
                 ),
