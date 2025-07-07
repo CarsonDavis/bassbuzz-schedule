@@ -495,19 +495,45 @@ class BassPracticeTracker {
 
     initializeGoogleAuth() {
         // Initialize Google OAuth when the API is loaded
-        window.addEventListener('load', () => {
-            if (window.google) {
-                google.accounts.id.initialize({
-                    client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with actual client ID
-                    callback: this.handleGoogleCallback.bind(this)
-                });
+        const initGoogle = () => {
+            if (window.google && window.google.accounts && window.google.accounts.id) {
+                try {
+                    google.accounts.id.initialize({
+                        client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with actual client ID
+                        callback: this.handleGoogleCallback.bind(this)
+                    });
+                    console.log('Google OAuth initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing Google OAuth:', error);
+                }
+            } else {
+                // Google SDK not ready, try again in 100ms
+                setTimeout(initGoogle, 100);
             }
-        });
+        };
+
+        // Try to initialize immediately if Google is already loaded
+        if (document.readyState === 'complete') {
+            initGoogle();
+        } else {
+            // Wait for the page to load
+            window.addEventListener('load', initGoogle);
+        }
     }
 
     handleGoogleLogin() {
-        if (window.google) {
-            google.accounts.id.prompt();
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+            try {
+                google.accounts.id.prompt();
+            } catch (error) {
+                console.error('Error prompting Google login:', error);
+                // Fallback: try to reinitialize and prompt again
+                setTimeout(() => {
+                    this.initializeGoogleAuth();
+                }, 1000);
+            }
+        } else {
+            console.warn('Google SDK not ready for login');
         }
     }
 
