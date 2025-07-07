@@ -36,15 +36,37 @@
     <main class="main-content">
         <!-- Timer Section -->
         <section class="timer-section">
-            <div class="timer-content">
-                <div class="timer-display" id="timerDisplay">00:00:00</div>
-                <div class="timer-controls">
-                    <button id="startBtn" class="btn btn-primary">Start</button>
-                    <button id="pauseBtn" class="btn btn-secondary">Pause</button>
-                    <button id="resetBtn" class="btn btn-danger">Reset</button>
+            <div class="timer-and-stats">
+                <div class="timer-content">
+                    <div class="timer-display" id="timerDisplay">00:00:00</div>
+                    <div class="timer-controls">
+                        <button id="startBtn" class="btn btn-primary">Start</button>
+                        <button id="pauseBtn" class="btn btn-secondary">Pause</button>
+                        <button id="resetBtn" class="btn btn-danger">Reset</button>
+                    </div>
+                    <div class="today-stats">
+                        <span>Today's Practice: <span id="todayTotal">0 min</span></span>
+                    </div>
                 </div>
-                <div class="today-stats">
-                    <span>Today's Practice: <span id="todayTotal">0 min</span></span>
+                
+                <div class="practice-stats">
+                    <h3>Practice Statistics</h3>
+                    <div class="stat-item">
+                        <div class="stat-label">Total Practice Time</div>
+                        <div class="stat-value" id="totalPracticeTime">0 hours</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Average Session Length</div>
+                        <div class="stat-value" id="avgSessionLength">0 min</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Expected Course Completion</div>
+                        <div class="stat-value" id="expectedCompletion">--</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Sessions This Week</div>
+                        <div class="stat-value" id="weeklysessions">0</div>
+                    </div>
                 </div>
             </div>
         </section>
