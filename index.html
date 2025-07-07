@@ -6,11 +6,31 @@
     <title>Bass Practice Tracker</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎸</text></svg>">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Google OAuth 2.0 SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- AWS SDK for JavaScript -->
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1596.0.min.js"></script>
 </head>
 <body>
     <header class="timer-header">
         <div class="timer-container">
             <h1>🎸 Bass Practice Tracker</h1>
+            <div class="auth-section">
+                <div id="authContainer">
+                    <button id="loginBtn" class="btn btn-auth">Login with Google</button>
+                    <div id="userInfo" class="user-info" style="display: none;">
+                        <img id="userAvatar" class="user-avatar" alt="User Avatar">
+                        <span id="userName" class="user-name"></span>
+                        <button id="logoutBtn" class="btn btn-auth">Logout</button>
+                    </div>
+                </div>
+                <div id="syncStatus" class="sync-status" style="display: none;">
+                    <span id="syncStatusText">Synced</span>
+                    <button id="manualSyncBtn" class="btn btn-sync">Sync Now</button>
+                </div>
+            </div>
             <div class="timer-section">
                 <div class="timer-display" id="timerDisplay">00:00:00</div>
                 <div class="timer-controls">

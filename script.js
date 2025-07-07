@@ -7,6 +7,14 @@ class BassPracticeTracker {
         this.currentMonth = new Date().getMonth();
         this.currentYear = new Date().getFullYear();
         
+        // Authentication state
+        this.isAuthenticated = false;
+        this.user = null;
+        this.googleIdToken = null;
+        this.lastSync = 0;
+        this.cloudVersion = 0;
+        this.syncInProgress = false;
+        
         this.init();
     }
 
@@ -14,10 +22,12 @@ class BassPracticeTracker {
         await this.loadLessons();
         this.loadProgress();
         this.setupTimerControls();
+        this.setupAuthControls();
         this.renderModules();
         this.renderCalendar();
         this.updateTodayStats();
         this.calculateTargetDate();
+        this.initializeGoogleAuth();
     }
 
     async loadLessons() {
@@ -45,6 +55,11 @@ class BassPracticeTracker {
 
     saveProgress() {
         localStorage.setItem('bassProgress', JSON.stringify(this.progress));
+        
+        // Auto-sync to cloud if authenticated
+        if (this.isAuthenticated && !this.syncInProgress) {
+            this.syncToCloud();
+        }
     }
 
     setupTimerControls() {
@@ -465,6 +480,227 @@ class BassPracticeTracker {
         const lightness = 70 - (intensity * 35);  // 70% to 35%
         
         return `hsl(120, ${saturation}%, ${lightness}%)`;
+    }
+
+    // Authentication Methods
+    setupAuthControls() {
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const manualSyncBtn = document.getElementById('manualSyncBtn');
+
+        loginBtn.addEventListener('click', () => this.handleGoogleLogin());
+        logoutBtn.addEventListener('click', () => this.handleGoogleLogout());
+        manualSyncBtn.addEventListener('click', () => this.manualSync());
+    }
+
+    initializeGoogleAuth() {
+        // Initialize Google OAuth when the API is loaded
+        window.addEventListener('load', () => {
+            if (window.google) {
+                google.accounts.id.initialize({
+                    client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with actual client ID
+                    callback: this.handleGoogleCallback.bind(this)
+                });
+            }
+        });
+    }
+
+    handleGoogleLogin() {
+        if (window.google) {
+            google.accounts.id.prompt();
+        }
+    }
+
+    handleGoogleCallback(response) {
+        try {
+            // Decode the JWT token
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            
+            this.user = {
+                sub: payload.sub,
+                name: payload.name,
+                email: payload.email,
+                picture: payload.picture
+            };
+            
+            this.googleIdToken = response.credential;
+            this.isAuthenticated = true;
+            
+            this.updateAuthUI();
+            this.initializeAWS();
+            this.syncFromCloud();
+            
+        } catch (error) {
+            console.error('Google login error:', error);
+            this.updateSyncStatus('Error', 'error');
+        }
+    }
+
+    handleGoogleLogout() {
+        this.isAuthenticated = false;
+        this.user = null;
+        this.googleIdToken = null;
+        
+        // Clear AWS credentials
+        if (window.AWS) {
+            AWS.config.credentials = null;
+        }
+        
+        this.updateAuthUI();
+        this.updateSyncStatus('Offline', '');
+    }
+
+    updateAuthUI() {
+        const loginBtn = document.getElementById('loginBtn');
+        const userInfo = document.getElementById('userInfo');
+        const userAvatar = document.getElementById('userAvatar');
+        const userName = document.getElementById('userName');
+        const syncStatus = document.getElementById('syncStatus');
+
+        if (this.isAuthenticated) {
+            loginBtn.style.display = 'none';
+            userInfo.style.display = 'flex';
+            syncStatus.style.display = 'flex';
+            
+            userAvatar.src = this.user.picture;
+            userName.textContent = this.user.name;
+            
+            this.updateSyncStatus('Synced', '');
+        } else {
+            loginBtn.style.display = 'block';
+            userInfo.style.display = 'none';
+            syncStatus.style.display = 'none';
+        }
+    }
+
+    updateSyncStatus(text, className) {
+        const syncStatusText = document.getElementById('syncStatusText');
+        const syncStatus = document.getElementById('syncStatus');
+        
+        syncStatusText.textContent = text;
+        syncStatus.className = `sync-status ${className}`;
+    }
+
+    // AWS and Sync Methods
+    initializeAWS() {
+        if (!window.AWS || !this.googleIdToken) return;
+
+        // Configure AWS Cognito Identity Pool
+        AWS.config.region = 'us-east-1'; // Replace with your region
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: 'YOUR_IDENTITY_POOL_ID', // Replace with actual pool ID
+            Logins: {
+                'accounts.google.com': this.googleIdToken
+            }
+        });
+
+        // Refresh credentials
+        AWS.config.credentials.refresh((error) => {
+            if (error) {
+                console.error('AWS credential refresh error:', error);
+                this.updateSyncStatus('Auth Error', 'error');
+            } else {
+                this.updateSyncStatus('Connected', '');
+            }
+        });
+    }
+
+    async syncToCloud() {
+        if (!this.isAuthenticated || this.syncInProgress) return;
+
+        this.syncInProgress = true;
+        this.updateSyncStatus('Syncing...', 'syncing');
+
+        try {
+            const dynamoDb = new AWS.DynamoDB.DocumentClient();
+            const item = {
+                userId: this.user.sub,
+                data: JSON.stringify(this.progress),
+                lastUpdated: Date.now(),
+                version: this.cloudVersion + 1
+            };
+
+            await dynamoDb.put({
+                TableName: 'bass-practice-data',
+                Item: item
+            }).promise();
+
+            this.cloudVersion = item.version;
+            this.lastSync = Date.now();
+            this.updateSyncStatus('Synced', '');
+            
+        } catch (error) {
+            console.error('Sync to cloud error:', error);
+            this.updateSyncStatus('Sync Error', 'error');
+        } finally {
+            this.syncInProgress = false;
+        }
+    }
+
+    async syncFromCloud() {
+        if (!this.isAuthenticated || this.syncInProgress) return;
+
+        this.syncInProgress = true;
+        this.updateSyncStatus('Syncing...', 'syncing');
+
+        try {
+            const dynamoDb = new AWS.DynamoDB.DocumentClient();
+            const result = await dynamoDb.get({
+                TableName: 'bass-practice-data',
+                Key: { userId: this.user.sub }
+            }).promise();
+
+            if (result.Item && result.Item.lastUpdated > this.lastSync) {
+                const cloudProgress = JSON.parse(result.Item.data);
+                this.mergeProgress(cloudProgress);
+                this.cloudVersion = result.Item.version;
+                this.lastSync = result.Item.lastUpdated;
+                
+                // Update UI after sync
+                this.renderModules();
+                this.renderCalendar();
+                this.updateTodayStats();
+                this.calculateTargetDate();
+            }
+
+            this.updateSyncStatus('Synced', '');
+            
+        } catch (error) {
+            console.error('Sync from cloud error:', error);
+            this.updateSyncStatus('Sync Error', 'error');
+        } finally {
+            this.syncInProgress = false;
+        }
+    }
+
+    mergeProgress(cloudProgress) {
+        // Simple merge strategy: cloud wins for conflicts
+        // In a real app, you'd want more sophisticated conflict resolution
+        
+        // Merge lesson progress
+        this.progress.lessons = { ...this.progress.lessons, ...cloudProgress.lessons };
+        
+        // Merge practice logs (keep highest time for each date)
+        for (const [date, time] of Object.entries(cloudProgress.practiceLog || {})) {
+            if (!this.progress.practiceLog[date] || this.progress.practiceLog[date] < time) {
+                this.progress.practiceLog[date] = time;
+            }
+        }
+        
+        // Update total practice time
+        this.progress.totalPracticeTime = Math.max(
+            this.progress.totalPracticeTime, 
+            cloudProgress.totalPracticeTime || 0
+        );
+        
+        this.saveProgress();
+    }
+
+    async manualSync() {
+        if (!this.isAuthenticated) return;
+        
+        await this.syncFromCloud();
+        await this.syncToCloud();
     }
 }
 

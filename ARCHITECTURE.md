@@ -18,8 +18,10 @@ Lightweight serverless architecture to add optional cloud sync and backup to the
 
 ### AUTHENTICATION
 - **GOOGLE OAUTH**: JavaScript SDK integration (no backend required)
+- **AWS COGNITO**: Identity Pool for secure credential exchange
 - **OPTIONAL LOGIN**: App works without authentication, syncs when logged in
 - **CLIENT-SIDE ONLY**: No server-side session management
+- **SECURE CREDENTIALS**: Temporary AWS credentials via Cognito federated identity
 
 ### DATA STORAGE
 - **PRIMARY**: Browser localStorage (unchanged)
@@ -39,12 +41,33 @@ Attributes:
 - version (number) - For conflict resolution
 ```
 
+### AUTHENTICATION FLOW
+```
+1. User clicks "Login with Google"
+2. Google OAuth provides JWT token
+3. AWS Cognito Identity Pool exchanges JWT for temporary AWS credentials
+4. Credentials are scoped to user's own DynamoDB data only
+5. Credentials auto-expire (1 hour) and refresh automatically
+```
+
 ### SYNC IMPLEMENTATION
 ```javascript
 // Add to existing BassPracticeTracker class
+async initializeAuth() {
+  // Configure AWS Cognito Identity Pool
+  AWS.config.region = 'us-east-1';
+  AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: 'us-east-1:your-identity-pool-id',
+    Logins: {
+      'accounts.google.com': this.googleIdToken
+    }
+  });
+}
+
 async syncToCloud() {
   if (!this.isAuthenticated) return;
   
+  const dynamoDb = new AWS.DynamoDB.DocumentClient();
   const item = {
     userId: this.user.sub,
     data: JSON.stringify(this.progress),
@@ -52,19 +75,20 @@ async syncToCloud() {
     version: (this.cloudVersion || 0) + 1
   };
   
-  await dynamoClient.putItem({
+  await dynamoDb.put({
     TableName: 'bass-practice-data',
     Item: item
-  });
+  }).promise();
 }
 
 async syncFromCloud() {
   if (!this.isAuthenticated) return;
   
-  const result = await dynamoClient.getItem({
+  const dynamoDb = new AWS.DynamoDB.DocumentClient();
+  const result = await dynamoDb.get({
     TableName: 'bass-practice-data',
     Key: { userId: this.user.sub }
-  });
+  }).promise();
   
   if (result.Item && result.Item.lastUpdated > this.lastSync) {
     this.progress = JSON.parse(result.Item.data);
@@ -92,6 +116,11 @@ async syncFromCloud() {
 - **Read Requests**: 1,000/month = $0.00/month ($0.25 per million)
 - **Write Requests**: 10,000/month = $0.01/month ($1.25 per million)
 
+#### AWS COGNITO IDENTITY POOL
+- **Identity Pool**: $0.00/month (free tier: 50,000 identities)
+- **Federated Identities**: $0.00/month (Google OAuth integration)
+- **Credential Exchange**: $0.00/month (included in free tier)
+
 #### ROUTE 53 
 - **Hosted Zone**: $0.00/month (using existing codebycarson.com zone)
 - **DNS Queries**: ~1,000/month = $0.00/month (free tier: 1M)
@@ -118,14 +147,41 @@ async syncFromCloud() {
 - S3 bucket with static website configuration
 - CloudFront distribution
 - DynamoDB table with on-demand billing
-- IAM role for browser-based DynamoDB access
+- **Cognito Identity Pool** for secure credential exchange
+- **IAM role** with identity-scoped DynamoDB access
 - Route 53 hosted zone (optional)
 
 ### SECURITY
-- **IAM POLICY**: Restrict DynamoDB access to user's own data
+- **COGNITO IDENTITY POOL**: Secure federated identity with Google
+- **IAM POLICY**: Restrict DynamoDB access to user's own data via identity scoping
+- **TEMPORARY CREDENTIALS**: Auto-expiring AWS credentials (1-hour TTL)
+- **NO PERMANENT SECRETS**: No AWS keys stored in browser
 - **CORS**: Configure S3 and DynamoDB for web access
 - **HTTPS**: Enforce SSL/TLS via CloudFront
-- **NO SECRETS**: All authentication via Google OAuth tokens
+- **PRINCIPLE OF LEAST PRIVILEGE**: Users can only access their own data
+
+#### IDENTITY-SCOPED IAM POLICY
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem"
+      ],
+      "Resource": "arn:aws:dynamodb:region:account:table/bass-practice-data",
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "dynamodb:LeadingKeys": ["${cognito-identity.amazonaws.com:sub}"]
+        }
+      }
+    }
+  ]
+}
+```
 
 ## BENEFITS
 - **OPTIONAL**: Existing users unaffected

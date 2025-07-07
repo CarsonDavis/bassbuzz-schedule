@@ -1,0 +1,203 @@
+name: Deploy Bass Practice Tracker
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+        - prod
+        - dev
+
+env:
+  AWS_REGION: us-east-1
+  
+jobs:
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    outputs:
+      identity-pool-id: ${{ steps.deploy-cdk.outputs.identity-pool-id }}
+      table-name: ${{ steps.deploy-cdk.outputs.table-name }}
+      s3-bucket: ${{ steps.deploy-cdk.outputs.s3-bucket }}
+      distribution-id: ${{ steps.deploy-cdk.outputs.distribution-id }}
+      website-url: ${{ steps.deploy-cdk.outputs.website-url }}
+      environment: ${{ steps.env.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event.inputs.environment }}" != "" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Setup Node.js for CDK
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Install CDK dependencies
+        working-directory: ./cdk
+        run: |
+          npm install -g aws-cdk
+          pip install -r requirements.txt
+          
+      - name: Deploy CDK stack
+        id: deploy-cdk
+        working-directory: ./cdk
+        env:
+          ENVIRONMENT: ${{ steps.env.outputs.environment }}
+        run: |
+          # Bootstrap CDK if needed
+          cdk bootstrap --context environment=$ENVIRONMENT || true
+          
+          # Deploy stack
+          cdk deploy --require-approval never --outputs-file outputs.json --context environment=$ENVIRONMENT
+          
+          # Extract outputs
+          STACK_NAME="BassBuzzStack"
+          if [ "$ENVIRONMENT" != "prod" ]; then
+            STACK_NAME="BassBuzzStack-$ENVIRONMENT"
+          fi
+          
+          IDENTITY_POOL_ID=$(cat outputs.json | jq -r --arg stack "$STACK_NAME" '.[$stack].IdentityPoolId // empty')
+          TABLE_NAME=$(cat outputs.json | jq -r --arg stack "$STACK_NAME" '.[$stack].DynamoDBTableName // empty')
+          S3_BUCKET=$(cat outputs.json | jq -r --arg stack "$STACK_NAME" '.[$stack].S3BucketName // empty')
+          DISTRIBUTION_ID=$(cat outputs.json | jq -r --arg stack "$STACK_NAME" '.[$stack].CloudFrontDistributionId // empty')
+          WEBSITE_URL=$(cat outputs.json | jq -r --arg stack "$STACK_NAME" '.[$stack].WebsiteURL // empty')
+          
+          echo "identity-pool-id=$IDENTITY_POOL_ID" >> $GITHUB_OUTPUT
+          echo "table-name=$TABLE_NAME" >> $GITHUB_OUTPUT
+          echo "s3-bucket=$S3_BUCKET" >> $GITHUB_OUTPUT
+          echo "distribution-id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "website-url=$WEBSITE_URL" >> $GITHUB_OUTPUT
+          
+          echo "Deployed to environment: $ENVIRONMENT"
+          echo "Website URL: $WEBSITE_URL"
+          echo "Identity Pool: $IDENTITY_POOL_ID"
+
+  deploy-frontend:
+    needs: deploy-infrastructure
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Configure application
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          IDENTITY_POOL_ID: ${{ needs.deploy-infrastructure.outputs.identity-pool-id }}
+          TABLE_NAME: ${{ needs.deploy-infrastructure.outputs.table-name }}
+        run: |
+          # Replace Google Client ID placeholder
+          sed -i "s/YOUR_GOOGLE_CLIENT_ID/$GOOGLE_CLIENT_ID/g" script.js
+          
+          # Replace AWS Identity Pool ID placeholder
+          sed -i "s/YOUR_IDENTITY_POOL_ID/$IDENTITY_POOL_ID/g" script.js
+          
+          # Replace DynamoDB table name placeholder
+          sed -i "s/bass-practice-data/$TABLE_NAME/g" script.js
+          
+          echo "Configuration complete:"
+          echo "- Google Client ID: ${GOOGLE_CLIENT_ID:0:10}..."
+          echo "- Identity Pool ID: $IDENTITY_POOL_ID"
+          echo "- Table Name: $TABLE_NAME"
+          
+      - name: Deploy to S3
+        run: |
+          BUCKET="${{ needs.deploy-infrastructure.outputs.s3-bucket }}"
+          
+          # Deploy static assets with long cache
+          aws s3 sync . s3://$BUCKET/ \
+            --delete \
+            --cache-control "max-age=31536000" \
+            --exclude "*.html" \
+            --exclude "*.js" \
+            --exclude "*.json" \
+            --exclude ".*" \
+            --exclude "cdk/*" \
+            --exclude ".github/*" \
+            --exclude "scripts/*" \
+            --exclude "*.md" \
+            --exclude "planning.md/*"
+            
+          # HTML and JS files with shorter cache
+          aws s3 sync . s3://$BUCKET/ \
+            --cache-control "max-age=300" \
+            --include "*.html" \
+            --include "*.js" \
+            --include "*.json" \
+            --exclude ".*" \
+            --exclude "cdk/*" \
+            --exclude ".github/*" \
+            --exclude "scripts/*" \
+            --exclude "*.md" \
+            --exclude "planning.md/*"
+            
+          echo "Deployed frontend to s3://$BUCKET/"
+            
+      - name: Invalidate CloudFront
+        if: needs.deploy-infrastructure.outputs.distribution-id != ''
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ needs.deploy-infrastructure.outputs.distribution-id }} \
+            --paths "/*"
+          echo "CloudFront invalidation created"
+          
+      - name: Summary
+        run: |
+          echo "🎸 Bass Practice Tracker deployment completed!"
+          echo "Environment: ${{ needs.deploy-infrastructure.outputs.environment }}"
+          echo "Website: ${{ needs.deploy-infrastructure.outputs.website-url }}"
+          echo "Identity Pool: ${{ needs.deploy-infrastructure.outputs.identity-pool-id }}"
+          echo "S3 Bucket: ${{ needs.deploy-infrastructure.outputs.s3-bucket }}"
+          
+          # Post to GitHub summary
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🎸 Bass Practice Tracker Deployment Summary
+          
+          **Environment:** ${{ needs.deploy-infrastructure.outputs.environment }}
+          **Website URL:** ${{ needs.deploy-infrastructure.outputs.website-url }}
+          **Identity Pool ID:** ${{ needs.deploy-infrastructure.outputs.identity-pool-id }}
+          **DynamoDB Table:** ${{ needs.deploy-infrastructure.outputs.table-name }}
+          **S3 Bucket:** ${{ needs.deploy-infrastructure.outputs.s3-bucket }}
+          **Git SHA:** ${{ github.sha }}
+          
+          ## Next Steps
+          - Test the website at the URL above
+          - Try logging in with Google OAuth
+          - Check practice data sync across devices
+          - Monitor AWS costs in console
+          EOF
