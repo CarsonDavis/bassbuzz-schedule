@@ -27,6 +27,7 @@ class BassPracticeTracker {
         this.renderCalendar();
         this.updateTodayStats();
         this.calculateTargetDate();
+        this.updateStatsDisplay();
         this.initializeGoogleAuth();
     }
 
@@ -44,11 +45,16 @@ class BassPracticeTracker {
         const saved = localStorage.getItem('bassProgress');
         if (saved) {
             this.progress = JSON.parse(saved);
+            // Migration: add courseStartDate if missing
+            if (!this.progress.hasOwnProperty('courseStartDate')) {
+                this.progress.courseStartDate = null;
+            }
         } else {
             this.progress = {
                 lessons: {},
                 practiceLog: {},
-                totalPracticeTime: 0
+                totalPracticeTime: 0,
+                courseStartDate: null
             };
         }
     }
@@ -112,7 +118,7 @@ class BassPracticeTracker {
 
     savePracticeSession() {
         if (this.currentTime > 0) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = this.getLocalDateString();
             if (!this.progress.practiceLog[today]) {
                 this.progress.practiceLog[today] = 0;
             }
@@ -121,11 +127,12 @@ class BassPracticeTracker {
             this.saveProgress();
             this.updateTodayStats();
             this.renderCalendar();
+            this.updateStatsDisplay();
         }
     }
 
     updateTodayStats() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.getLocalDateString();
         const todayMinutes = Math.floor((this.progress.practiceLog[today] || 0) / 60);
         document.getElementById('todayTotal').textContent = `${todayMinutes} min`;
     }
@@ -187,10 +194,17 @@ class BassPracticeTracker {
                 const key = `${moduleId}-${lessonName}`;
                 
                 this.progress.lessons[key] = e.target.checked;
+                
+                // Set course start date when first lesson is completed
+                if (e.target.checked && !this.progress.courseStartDate) {
+                    this.progress.courseStartDate = this.getLocalDateString();
+                }
+                
                 this.saveProgress();
                 this.updateOverallProgress();
                 this.renderModules();
                 this.calculateTargetDate();
+                this.updateStatsDisplay();
             }
         });
 
@@ -265,9 +279,9 @@ class BassPracticeTracker {
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day';
             
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = this.getLocalDateString(date);
             const isCurrentMonth = date.getMonth() === this.currentMonth;
-            const isToday = dateStr === new Date().toISOString().split('T')[0];
+            const isToday = dateStr === this.getLocalDateString();
             const practiceTime = this.progress.practiceLog[dateStr] || 0;
             const practiceMinutes = Math.floor(practiceTime / 60);
             
@@ -318,28 +332,56 @@ class BassPracticeTracker {
             return;
         }
 
-        // Calculate average practice frequency (days per week)
-        const practiceEntries = Object.entries(this.progress.practiceLog);
-        if (practiceEntries.length < 7) {
-            // Not enough data, assume 3 days per week
-            const daysPerWeek = 3;
-            const weeksNeeded = Math.ceil(remainingLessons / daysPerWeek);
-            const targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + (weeksNeeded * 7));
-            this.targetDate = targetDate.toISOString().split('T')[0];
-        } else {
-            // Calculate based on actual practice frequency
-            const recentEntries = practiceEntries.slice(-30); // Last 30 days
-            const practiceDays = recentEntries.filter(([date, time]) => time > 0).length;
-            const daysPerWeek = (practiceDays / 30) * 7;
+        // If no lessons completed, can't calculate
+        if (completedLessons === 0) {
+            this.targetDate = null;
+            return;
+        }
+        
+        // If no start date but have lessons, estimate start date from practice log
+        if (!this.progress.courseStartDate) {
+            const practiceEntries = Object.entries(this.progress.practiceLog);
+            if (practiceEntries.length > 0) {
+                // Use earliest practice date as estimated start date
+                const earliestDate = practiceEntries
+                    .filter(([date, time]) => time > 0)
+                    .map(([date, time]) => date)
+                    .sort()[0];
+                if (earliestDate) {
+                    this.progress.courseStartDate = earliestDate;
+                    this.saveProgress();
+                }
+            }
             
-            if (daysPerWeek > 0) {
-                const weeksNeeded = Math.ceil(remainingLessons / daysPerWeek);
-                const targetDate = new Date();
-                targetDate.setDate(targetDate.getDate() + (weeksNeeded * 7));
-                this.targetDate = targetDate.toISOString().split('T')[0];
+            // If still no start date, can't calculate
+            if (!this.progress.courseStartDate) {
+                this.targetDate = null;
+                return;
             }
         }
+
+        // Calculate lessons per day based on actual progress
+        const startDate = new Date(this.progress.courseStartDate);
+        const today = new Date();
+        const daysSinceStart = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
+        
+        // Avoid division by zero
+        if (daysSinceStart <= 0) {
+            this.targetDate = null;
+            return;
+        }
+
+        const lessonsPerDay = completedLessons / daysSinceStart;
+        
+        // Ensure minimum reasonable learning rate (at least 1 lesson per month)
+        const minLessonsPerDay = 1 / 30; // 1 lesson per 30 days
+        const effectiveLessonsPerDay = Math.max(lessonsPerDay, minLessonsPerDay);
+
+        // Calculate projected completion date
+        const daysToComplete = Math.ceil(remainingLessons / effectiveLessonsPerDay);
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + daysToComplete);
+        this.targetDate = this.getLocalDateString(targetDate);
     }
 
     editPracticeTime(dateStr, currentMinutes) {
@@ -469,6 +511,7 @@ class BassPracticeTracker {
         this.renderCalendar();
         this.updateTodayStats();
         this.calculateTargetDate();
+        this.updateStatsDisplay();
     }
 
     getPracticeColor(minutes) {
@@ -480,6 +523,146 @@ class BassPracticeTracker {
         const lightness = 70 - (intensity * 35);  // 70% to 35%
         
         return `hsl(120, ${saturation}%, ${lightness}%)`;
+    }
+
+    // Helper function to get local date in YYYY-MM-DD format
+    getLocalDateString(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // Helper function to format time from seconds
+    formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else if (minutes > 0) {
+            return `${minutes}m`;
+        } else {
+            return '0m';
+        }
+    }
+
+    // Helper function to get current week date range (Sunday to Saturday)
+    getCurrentWeekRange() {
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+        endOfWeek.setHours(23, 59, 59, 999);
+        
+        return { start: startOfWeek, end: endOfWeek };
+    }
+
+    // Helper function to count sessions in a date range
+    getSessionsInDateRange(startDate, endDate) {
+        let sessionCount = 0;
+        const start = this.getLocalDateString(startDate);
+        const end = this.getLocalDateString(endDate);
+        
+        for (const [dateStr, seconds] of Object.entries(this.progress.practiceLog)) {
+            if (dateStr >= start && dateStr <= end && seconds > 0) {
+                sessionCount++;
+            }
+        }
+        
+        return sessionCount;
+    }
+
+    // Statistics update methods
+    updateTotalPracticeTime() {
+        const totalSeconds = this.progress.totalPracticeTime || 0;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        
+        let displayText;
+        if (hours > 0) {
+            displayText = `${hours} hour${hours !== 1 ? 's' : ''}`;
+            if (minutes > 0) {
+                displayText += ` ${minutes} min`;
+            }
+        } else if (minutes > 0) {
+            displayText = `${minutes} min`;
+        } else {
+            displayText = '0 min';
+        }
+        
+        document.getElementById('totalPracticeTime').textContent = displayText;
+    }
+
+    updateAverageSessionLength() {
+        const practiceEntries = Object.values(this.progress.practiceLog);
+        const activeSessions = practiceEntries.filter(seconds => seconds > 0);
+        
+        if (activeSessions.length === 0) {
+            document.getElementById('avgSessionLength').textContent = '0 min';
+            return;
+        }
+        
+        const totalSeconds = activeSessions.reduce((sum, seconds) => sum + seconds, 0);
+        const averageSeconds = totalSeconds / activeSessions.length;
+        const averageMinutes = Math.round(averageSeconds / 60);
+        
+        document.getElementById('avgSessionLength').textContent = `${averageMinutes} min`;
+    }
+
+    updateExpectedCompletion() {
+        // Check if course is actually complete
+        const totalLessons = this.lessons.reduce((sum, module) => sum + module.lessons.length, 0);
+        const completedLessons = Object.values(this.progress.lessons).filter(Boolean).length;
+        
+        if (completedLessons >= totalLessons) {
+            document.getElementById('expectedCompletion').textContent = 'Complete!';
+            return;
+        }
+        
+        if (!this.targetDate) {
+            document.getElementById('expectedCompletion').textContent = '--';
+            return;
+        }
+        
+        const targetDateObj = new Date(this.targetDate);
+        const now = new Date();
+        const diffTime = targetDateObj - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+            document.getElementById('expectedCompletion').textContent = 'Overdue';
+        } else if (diffDays === 0) {
+            document.getElementById('expectedCompletion').textContent = 'Today';
+        } else if (diffDays <= 7) {
+            document.getElementById('expectedCompletion').textContent = `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+        } else if (diffDays <= 30) {
+            const weeks = Math.ceil(diffDays / 7);
+            document.getElementById('expectedCompletion').textContent = `${weeks} week${weeks !== 1 ? 's' : ''}`;
+        } else {
+            const options = { month: 'short', day: 'numeric' };
+            if (targetDateObj.getFullYear() !== now.getFullYear()) {
+                options.year = 'numeric';
+            }
+            document.getElementById('expectedCompletion').textContent = targetDateObj.toLocaleDateString('en-US', options);
+        }
+    }
+
+    updateWeeklySessions() {
+        const weekRange = this.getCurrentWeekRange();
+        const sessionsThisWeek = this.getSessionsInDateRange(weekRange.start, weekRange.end);
+        document.getElementById('weeklysessions').textContent = sessionsThisWeek;
+    }
+
+    // Main statistics display update method
+    updateStatsDisplay() {
+        this.updateTotalPracticeTime();
+        this.updateAverageSessionLength();
+        this.updateExpectedCompletion();
+        this.updateWeeklySessions();
     }
 
     // Authentication Methods
@@ -703,6 +886,7 @@ class BassPracticeTracker {
                 this.renderCalendar();
                 this.updateTodayStats();
                 this.calculateTargetDate();
+                this.updateStatsDisplay();
             }
 
             
