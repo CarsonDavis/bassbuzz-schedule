@@ -596,6 +596,24 @@ class BassPracticeTracker {
             AWS.config.credentials = null;
         }
         
+        // Clear Google OAuth state
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+            try {
+                // Disable auto-select to prevent automatic re-authentication
+                google.accounts.id.disableAutoSelect();
+                
+                // Cancel any pending prompts
+                google.accounts.id.cancel();
+                
+                // Reinitialize Google OAuth to reset state
+                setTimeout(() => {
+                    this.initializeGoogleAuth();
+                }, 100);
+            } catch (error) {
+                console.error('Error during Google logout:', error);
+            }
+        }
+        
         this.updateAuthUI();
         this.updateSyncStatus('Offline', '');
     }
