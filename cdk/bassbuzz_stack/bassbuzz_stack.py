@@ -2,6 +2,7 @@ from aws_cdk import (
     Stack,
     CfnOutput,
     RemovalPolicy,
+    Tags,
 )
 from constructs import Construct
 
@@ -16,11 +17,11 @@ class BassBuzzStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # Apply consistent tags to all resources
-        cdk.Tags.of(self).add("Project", "BassPracticeTracker")
-        cdk.Tags.of(self).add("Environment", environment)
-        cdk.Tags.of(self).add("Owner", "codebycarson")
-        cdk.Tags.of(self).add("ManagedBy", "CDK")
-        cdk.Tags.of(self).add("Repository", "bassbuzz-schedule")
+        Tags.of(self).add("Project", "BassPracticeTracker")
+        Tags.of(self).add("Environment", environment)
+        Tags.of(self).add("Owner", "codebycarson")
+        Tags.of(self).add("ManagedBy", "CDK")
+        Tags.of(self).add("Repository", "bassbuzz-schedule")
 
         # Configuration based on environment
         if environment == "prod":
