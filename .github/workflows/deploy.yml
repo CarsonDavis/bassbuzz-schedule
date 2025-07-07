@@ -71,6 +71,7 @@ jobs:
         working-directory: ./cdk
         env:
           ENVIRONMENT: ${{ steps.env.outputs.environment }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
         run: |
           # Bootstrap CDK if needed
           cdk bootstrap --context environment=$ENVIRONMENT || true

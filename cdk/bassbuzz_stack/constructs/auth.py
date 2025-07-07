@@ -17,12 +17,16 @@ class AuthConstruct(Construct):
         super().__init__(scope, construct_id, **kwargs)
 
         # Cognito Identity Pool for federated identity
+        # Get Google Client ID from environment variable
+        import os
+        google_client_id = os.environ.get('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_ID_PLACEHOLDER')
+        
         self.identity_pool = cognito.CfnIdentityPool(
             self, "IdentityPool",
             identity_pool_name=identity_pool_name,
             allow_unauthenticated_identities=False,
             supported_login_providers={
-                "accounts.google.com": "GOOGLE_CLIENT_ID_PLACEHOLDER"
+                "accounts.google.com": google_client_id
             }
         )
 

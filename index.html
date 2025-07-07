@@ -14,24 +14,29 @@
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1596.0.min.js"></script>
 </head>
 <body>
-    <header class="timer-header">
-        <div class="timer-container">
-            <h1>🎸 Bass Practice Tracker</h1>
-            <div class="auth-section">
-                <div id="authContainer">
-                    <button id="loginBtn" class="btn btn-auth">Login with Google</button>
-                    <div id="userInfo" class="user-info" style="display: none;">
-                        <img id="userAvatar" class="user-avatar" alt="User Avatar">
-                        <span id="userName" class="user-name"></span>
-                        <button id="logoutBtn" class="btn btn-auth">Logout</button>
-                    </div>
-                </div>
-                <div id="syncStatus" class="sync-status" style="display: none;">
-                    <span id="syncStatusText">Synced</span>
-                    <button id="manualSyncBtn" class="btn btn-sync">Sync Now</button>
+    <!-- Header with Title and Auth -->
+    <header class="main-header">
+        <h1>🎸 Bass Practice Tracker</h1>
+        <div class="auth-section">
+            <div id="authContainer">
+                <button id="loginBtn" class="btn btn-auth">Login with Google</button>
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <img id="userAvatar" class="user-avatar" alt="User Avatar">
+                    <span id="userName" class="user-name"></span>
+                    <button id="logoutBtn" class="btn btn-auth">Logout</button>
                 </div>
             </div>
-            <div class="timer-section">
+            <div id="syncStatus" class="sync-status" style="display: none;">
+                <span id="syncStatusText">Synced</span>
+                <button id="manualSyncBtn" class="btn btn-sync">Sync Now</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Timer Section -->
+        <section class="timer-section">
+            <div class="timer-content">
                 <div class="timer-display" id="timerDisplay">00:00:00</div>
                 <div class="timer-controls">
                     <button id="startBtn" class="btn btn-primary">Start</button>
@@ -42,27 +47,26 @@
                     <span>Today's Practice: <span id="todayTotal">0 min</span></span>
                 </div>
             </div>
-        </div>
-    </header>
+        </section>
 
-    <main class="main-content">
-        <aside class="sidebar">
-            <div class="course-progress">
-                <h2>Course Progress</h2>
-                <div class="overall-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="overallProgress"></div>
+        <div class="content-below-timer">
+            <aside class="sidebar">
+                <div class="course-progress">
+                    <h2>Course Progress</h2>
+                    <div class="overall-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="overallProgress"></div>
+                        </div>
+                        <span id="progressText">0 / 92 lessons completed</span>
                     </div>
-                    <span id="progressText">0 / 92 lessons completed</span>
+                    
+                    <div class="modules-container" id="modulesContainer">
+                        <!-- Modules will be populated by JavaScript -->
+                    </div>
                 </div>
-                
-                <div class="modules-container" id="modulesContainer">
-                    <!-- Modules will be populated by JavaScript -->
-                </div>
-            </div>
-        </aside>
+            </aside>
 
-        <section class="calendar-section">
+            <section class="calendar-section">
             <div class="calendar-header">
                 <button id="prevMonth" class="btn btn-nav">&lt;</button>
                 <h2 id="currentMonth">January 2025</h2>
@@ -85,8 +89,8 @@
                     <span class="legend-color target-date"></span>
                     <span>Estimated Completion</span>
                 </div>
-            </div>
-        </section>
+            </section>
+        </div>
     </main>
 
     <!-- Edit Practice Time Modal -->
