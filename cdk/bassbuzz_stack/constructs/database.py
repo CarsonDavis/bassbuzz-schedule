@@ -23,7 +23,7 @@ class DatabaseConstruct(Construct):
                 name="userId",
                 type=dynamodb.AttributeType.STRING
             ),
-            billing_mode=dynamodb.BillingMode.ON_DEMAND,
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.DESTROY,
             point_in_time_recovery=True,
             encryption=dynamodb.TableEncryption.AWS_MANAGED,
