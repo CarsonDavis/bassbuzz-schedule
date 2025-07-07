@@ -538,9 +538,30 @@ class BassPracticeTracker {
     }
 
     handleGoogleCallback(response) {
+        console.log('=== GOOGLE CALLBACK DEBUG ===');
+        console.log('Full response:', response);
+        console.log('Response type:', typeof response);
+        console.log('Response keys:', Object.keys(response || {}));
+        
         try {
+            if (!response) {
+                console.error('No response from Google');
+                this.updateSyncStatus('Error', 'error');
+                return;
+            }
+            
+            if (!response.credential) {
+                console.error('No credential in response:', response);
+                this.updateSyncStatus('Error', 'error');
+                return;
+            }
+            
+            console.log('Credential found:', response.credential.substring(0, 50) + '...');
+            console.log('Credential length:', response.credential.length);
+            
             // Decode the JWT token
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            console.log('Decoded payload:', payload);
             
             this.user = {
                 sub: payload.sub,
@@ -551,6 +572,9 @@ class BassPracticeTracker {
             
             this.googleIdToken = response.credential;
             this.isAuthenticated = true;
+            
+            console.log('Set googleIdToken:', this.googleIdToken ? 'YES' : 'NO');
+            console.log('User authenticated:', this.isAuthenticated);
             
             this.updateAuthUI();
             this.initializeAWS();
@@ -732,5 +756,5 @@ class BassPracticeTracker {
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new BassPracticeTracker();
+    window.tracker = new BassPracticeTracker();
 });
