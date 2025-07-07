@@ -486,11 +486,8 @@ class BassPracticeTracker {
     setupAuthControls() {
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
-        const manualSyncBtn = document.getElementById('manualSyncBtn');
-
         loginBtn.addEventListener('click', () => this.handleGoogleLogin());
         logoutBtn.addEventListener('click', () => this.handleGoogleLogout());
-        manualSyncBtn.addEventListener('click', () => this.manualSync());
     }
 
     initializeGoogleAuth() {
@@ -546,13 +543,11 @@ class BassPracticeTracker {
         try {
             if (!response) {
                 console.error('No response from Google');
-                this.updateSyncStatus('Error', 'error');
                 return;
             }
             
             if (!response.credential) {
                 console.error('No credential in response:', response);
-                this.updateSyncStatus('Error', 'error');
                 return;
             }
             
@@ -582,7 +577,6 @@ class BassPracticeTracker {
             
         } catch (error) {
             console.error('Google login error:', error);
-            this.updateSyncStatus('Error', 'error');
         }
     }
 
@@ -615,7 +609,6 @@ class BassPracticeTracker {
         }
         
         this.updateAuthUI();
-        this.updateSyncStatus('Offline', '');
     }
 
     updateAuthUI() {
@@ -623,31 +616,19 @@ class BassPracticeTracker {
         const userInfo = document.getElementById('userInfo');
         const userAvatar = document.getElementById('userAvatar');
         const userName = document.getElementById('userName');
-        const syncStatus = document.getElementById('syncStatus');
 
         if (this.isAuthenticated) {
             loginBtn.style.display = 'none';
             userInfo.style.display = 'flex';
-            syncStatus.style.display = 'flex';
             
             userAvatar.src = this.user.picture;
             userName.textContent = this.user.name;
-            
-            this.updateSyncStatus('Synced', '');
         } else {
             loginBtn.style.display = 'block';
             userInfo.style.display = 'none';
-            syncStatus.style.display = 'none';
         }
     }
 
-    updateSyncStatus(text, className) {
-        const syncStatusText = document.getElementById('syncStatusText');
-        const syncStatus = document.getElementById('syncStatus');
-        
-        syncStatusText.textContent = text;
-        syncStatus.className = `sync-status ${className}`;
-    }
 
     // AWS and Sync Methods
     initializeAWS() {
@@ -666,9 +647,6 @@ class BassPracticeTracker {
         AWS.config.credentials.refresh((error) => {
             if (error) {
                 console.error('AWS credential refresh error:', error);
-                this.updateSyncStatus('Auth Error', 'error');
-            } else {
-                this.updateSyncStatus('Connected', '');
             }
         });
     }
@@ -677,7 +655,6 @@ class BassPracticeTracker {
         if (!this.isAuthenticated || this.syncInProgress) return;
 
         this.syncInProgress = true;
-        this.updateSyncStatus('Syncing...', 'syncing');
 
         try {
             const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -695,11 +672,9 @@ class BassPracticeTracker {
 
             this.cloudVersion = item.version;
             this.lastSync = Date.now();
-            this.updateSyncStatus('Synced', '');
             
         } catch (error) {
             console.error('Sync to cloud error:', error);
-            this.updateSyncStatus('Sync Error', 'error');
         } finally {
             this.syncInProgress = false;
         }
@@ -709,7 +684,6 @@ class BassPracticeTracker {
         if (!this.isAuthenticated || this.syncInProgress) return;
 
         this.syncInProgress = true;
-        this.updateSyncStatus('Syncing...', 'syncing');
 
         try {
             const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -731,11 +705,9 @@ class BassPracticeTracker {
                 this.calculateTargetDate();
             }
 
-            this.updateSyncStatus('Synced', '');
             
         } catch (error) {
             console.error('Sync from cloud error:', error);
-            this.updateSyncStatus('Sync Error', 'error');
         } finally {
             this.syncInProgress = false;
         }
@@ -764,12 +736,6 @@ class BassPracticeTracker {
         this.saveProgress();
     }
 
-    async manualSync() {
-        if (!this.isAuthenticated) return;
-        
-        await this.syncFromCloud();
-        await this.syncToCloud();
-    }
 }
 
 // Initialize the app when DOM is loaded
