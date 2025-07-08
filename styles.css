@@ -631,6 +631,11 @@ body {
     .calendar-legend {
         flex-direction: column;
         align-items: center;
+        text-align: center;
+    }
+
+    .gradient-legend {
+        align-items: center;
     }
 }
 
@@ -877,6 +882,17 @@ body {
     .practice-stats {
         min-width: auto;
         padding: 20px;
+        text-align: center;
+    }
+
+    .stat-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 4px;
+    }
+
+    .stat-value {
+        text-align: center;
     }
 
     .content-below-timer {
@@ -891,6 +907,22 @@ body {
 
     .calendar-section {
         order: 1;
+    }
+
+    .calendar-legend {
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    .legend-item {
+        justify-content: center;
+        align-items: center;
+    }
+
+    .auth-section {
+        justify-content: center;
+        width: 100%;
     }
 }
 
