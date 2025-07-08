@@ -26,6 +26,7 @@
                     <button id="logoutBtn" class="btn btn-auth">Logout</button>
                 </div>
             </div>
+            <button id="infoBtn" class="btn-info" title="App Information">ℹ️</button>
         </div>
     </header>
 
@@ -142,6 +143,24 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="modalCancel">Cancel</button>
                 <button class="btn btn-primary" id="modalSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="modal-overlay">
+        <div class="modal-content modal-info">
+            <div class="modal-header">
+                <h3>App Information</h3>
+                <button class="modal-close" id="infoModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="infoContent">
+                    <p>Loading information...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="infoModalClose2">Close</button>
             </div>
         </div>
     </div>

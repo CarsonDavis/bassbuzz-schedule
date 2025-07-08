@@ -23,6 +23,7 @@ class BassPracticeTracker {
         this.loadProgress();
         this.setupTimerControls();
         this.setupAuthControls();
+        this.setupInfoModal();
         this.renderModules();
         this.renderCalendar();
         this.updateTodayStats();
@@ -124,6 +125,12 @@ class BassPracticeTracker {
             }
             this.progress.practiceLog[today] += this.currentTime;
             this.progress.totalPracticeTime += this.currentTime;
+            
+            // Set course start date if not already set
+            if (!this.progress.courseStartDate) {
+                this.setCourseStartDate();
+            }
+            
             this.saveProgress();
             this.updateTodayStats();
             this.renderCalendar();
@@ -195,9 +202,9 @@ class BassPracticeTracker {
                 
                 this.progress.lessons[key] = e.target.checked;
                 
-                // Set course start date when first lesson is completed
+                // Set course start date when first lesson is completed (if no practice dates exist)
                 if (e.target.checked && !this.progress.courseStartDate) {
-                    this.progress.courseStartDate = this.getLocalDateString();
+                    this.setCourseStartDate();
                 }
                 
                 this.saveProgress();
@@ -291,8 +298,8 @@ class BassPracticeTracker {
                 ${practiceMinutes > 0 ? `<span class="practice-minutes">${practiceMinutes}m</span>` : ''}
             `;
             
-            // Add click handler for editing practice time (except for day headers)
-            if (isCurrentMonth) {
+            // Add click handler for editing practice time (except for day headers and future dates)
+            if (isCurrentMonth && dateStr <= this.getLocalDateString()) {
                 dayDiv.addEventListener('click', () => {
                     this.editPracticeTime(dateStr, practiceMinutes);
                 });
@@ -363,25 +370,16 @@ class BassPracticeTracker {
             return null;
         }
         
-        // If no start date but have lessons, estimate start date from practice log
+        // If no start date, try to set it based on practice log
         if (!this.progress.courseStartDate) {
-            const practiceEntries = Object.entries(this.progress.practiceLog);
-            if (practiceEntries.length > 0) {
-                // Use earliest practice date as estimated start date
-                const earliestDate = practiceEntries
-                    .filter(([date, time]) => time > 0)
-                    .map(([date, time]) => date)
-                    .sort()[0];
-                if (earliestDate) {
-                    this.progress.courseStartDate = earliestDate;
-                    this.saveProgress();
-                }
-            }
+            this.setCourseStartDate();
             
             // If still no start date, can't calculate
             if (!this.progress.courseStartDate) {
                 return null;
             }
+            
+            this.saveProgress();
         }
 
         // Calculate lessons per day based on actual progress
@@ -518,6 +516,13 @@ class BassPracticeTracker {
                 return;
             }
             
+            // Check if date is in the future
+            const today = this.getLocalDateString();
+            if (dateStr > today) {
+                this.showModalError('Cannot add practice time for future dates');
+                return;
+            }
+            
             this.updatePracticeTime(dateStr, newMinutes);
             this.hideEditModal();
         };
@@ -596,6 +601,11 @@ class BassPracticeTracker {
         // Update total practice time
         this.progress.totalPracticeTime += (newSeconds - oldSeconds);
         
+        // Update course start date if this changes the earliest practice date
+        if (newSeconds > 0 && (!this.progress.courseStartDate || dateStr < this.progress.courseStartDate)) {
+            this.setCourseStartDate();
+        }
+        
         // Save and refresh displays
         this.saveProgress();
         this.renderCalendar();
@@ -621,6 +631,27 @@ class BassPracticeTracker {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    }
+
+    // Set course start date based on earliest practice date
+    setCourseStartDate() {
+        const practiceEntries = Object.entries(this.progress.practiceLog);
+        if (practiceEntries.length > 0) {
+            // Find earliest date with practice time > 0
+            const earliestDate = practiceEntries
+                .filter(([date, time]) => time > 0)
+                .map(([date, time]) => date)
+                .sort()[0];
+            
+            if (earliestDate) {
+                this.progress.courseStartDate = earliestDate;
+            }
+        }
+        
+        // Fallback to today if no practice dates exist
+        if (!this.progress.courseStartDate) {
+            this.progress.courseStartDate = this.getLocalDateString();
+        }
     }
 
     // Helper function to format time from seconds
@@ -810,6 +841,81 @@ class BassPracticeTracker {
         const logoutBtn = document.getElementById('logoutBtn');
         loginBtn.addEventListener('click', () => this.handleGoogleLogin());
         logoutBtn.addEventListener('click', () => this.handleGoogleLogout());
+    }
+
+    setupInfoModal() {
+        const infoBtn = document.getElementById('infoBtn');
+        const infoModal = document.getElementById('infoModal');
+        const infoModalClose = document.getElementById('infoModalClose');
+        const infoModalClose2 = document.getElementById('infoModalClose2');
+
+        infoBtn.addEventListener('click', () => this.showInfoModal());
+        infoModalClose.addEventListener('click', () => this.hideInfoModal());
+        infoModalClose2.addEventListener('click', () => this.hideInfoModal());
+
+        // Close modal when clicking outside
+        infoModal.addEventListener('click', (e) => {
+            if (e.target === infoModal) {
+                this.hideInfoModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && infoModal.classList.contains('active')) {
+                this.hideInfoModal();
+            }
+        });
+    }
+
+    async showInfoModal() {
+        const infoModal = document.getElementById('infoModal');
+        const infoContent = document.getElementById('infoContent');
+        
+        try {
+            const response = await fetch('info.md');
+            const markdownText = await response.text();
+            
+            // Simple markdown to HTML conversion
+            const htmlContent = this.convertMarkdownToHTML(markdownText);
+            infoContent.innerHTML = htmlContent;
+        } catch (error) {
+            console.error('Error loading info content:', error);
+            infoContent.innerHTML = '<p>Error loading information. Please try again.</p>';
+        }
+        
+        infoModal.classList.add('active');
+    }
+
+    hideInfoModal() {
+        const infoModal = document.getElementById('infoModal');
+        infoModal.classList.remove('active');
+    }
+
+    convertMarkdownToHTML(markdown) {
+        let html = markdown;
+        
+        // Headers
+        html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+        
+        // Bold text
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Code blocks
+        html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+        
+        // Line breaks and paragraphs
+        html = html.replace(/\n\n/g, '</p><p>');
+        html = html.replace(/\n/g, '<br>');
+        html = '<p>' + html + '</p>';
+        
+        // Clean up empty paragraphs
+        html = html.replace(/<p><\/p>/g, '');
+        html = html.replace(/<p><br>/g, '<p>');
+        
+        return html;
     }
 
     initializeGoogleAuth() {

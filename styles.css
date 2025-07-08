@@ -19,7 +19,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .main-header h1 {
@@ -27,6 +27,29 @@ body {
     font-size: 1.8em;
     margin: 0;
     font-weight: 500;
+}
+
+.auth-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn-info {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 2rem;
+    padding: 4px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-info:hover {
+    transform: scale(1.2);
+    filter: brightness(1.2);
 }
 
 /* Timer Section */
@@ -63,7 +86,7 @@ body {
     text-align: center;
     font-family: 'Courier New', monospace;
     border: 2px solid rgba(52, 152, 219, 0.2);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .timer-controls {
@@ -154,6 +177,10 @@ body {
     border-bottom: none;
 }
 
+.stat-item:has(#lessonsPerDay) {
+    border-bottom: none;
+}
+
 .stat-label {
     color: #bdc3c7;
     font-size: 0.95em;
@@ -186,9 +213,8 @@ body {
 /* Authentication Section */
 .auth-section {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 10px;
+    align-items: center;
+    gap: 15px;
 }
 
 #authContainer {
@@ -212,7 +238,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    background-color: rgba(0,0,0,0.2);
+    background-color: rgba(0, 0, 0, 0.2);
     padding: 8px 12px;
     border-radius: 20px;
 }
@@ -280,7 +306,7 @@ body {
     background-color: #2c3e50;
     padding: 20px;
     border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     height: fit-content;
 }
 
@@ -321,7 +347,7 @@ body {
     border-radius: 8px;
     margin-bottom: 15px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .module-header {
@@ -395,7 +421,7 @@ body {
     background-color: #2c3e50;
     padding: 20px;
     border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .calendar-header {
@@ -514,10 +540,10 @@ body {
 .gradient-bar {
     width: 120px;
     height: 15px;
-    background: linear-gradient(90deg, 
-        hsl(120, 40%, 70%) 0%,
-        hsl(120, 55%, 52.5%) 50%,
-        hsl(120, 70%, 35%) 100%);
+    background: linear-gradient(90deg,
+            hsl(120, 40%, 70%) 0%,
+            hsl(120, 55%, 52.5%) 50%,
+            hsl(120, 70%, 35%) 100%);
     border-radius: 8px;
     position: relative;
     display: flex;
@@ -531,7 +557,7 @@ body {
     font-size: 0.7em;
     color: white;
     font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .legend-color.target-date {
@@ -540,9 +566,17 @@ body {
 
 /* Animations */
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 /* Responsive Design */
@@ -551,33 +585,33 @@ body {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .timer-container h1 {
         font-size: 2em;
         margin-bottom: 15px;
     }
-    
+
     .timer-display {
         font-size: 2.5em;
     }
-    
+
     .main-content {
         flex-direction: column;
         padding: 15px;
     }
-    
+
     .sidebar {
         min-width: auto;
     }
-    
+
     .calendar-grid {
         gap: 1px;
     }
-    
+
     .calendar-day {
         font-size: 0.8em;
     }
-    
+
     .calendar-legend {
         gap: 10px;
     }
@@ -588,12 +622,12 @@ body {
         flex-direction: column;
         gap: 8px;
     }
-    
+
     .btn {
         padding: 8px 15px;
         font-size: 14px;
     }
-    
+
     .calendar-legend {
         flex-direction: column;
         align-items: center;
@@ -746,6 +780,65 @@ body {
     font-size: 14px;
 }
 
+/* Info Modal Specific Styles */
+.modal-info {
+    max-width: 600px;
+    max-height: 80vh;
+}
+
+.modal-info .modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-info h1 {
+    color: #3498db;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+.modal-info h2 {
+    color: #27ae60;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.4em;
+}
+
+.modal-info h3 {
+    color: #f39c12;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 1.2em;
+}
+
+.modal-info p {
+    color: #bdc3c7;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.modal-info strong {
+    color: #ecf0f1;
+}
+
+.modal-info code {
+    background-color: #34495e;
+    color: #e74c3c;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+}
+
+.modal-info ul {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.modal-info li {
+    color: #bdc3c7;
+    margin-bottom: 8px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .main-header {
@@ -753,49 +846,49 @@ body {
         gap: 15px;
         text-align: center;
     }
-    
+
     .main-header h1 {
         font-size: 1.5em;
     }
-    
+
     .auth-section {
         align-items: center;
     }
-    
+
     .timer-section {
         padding: 30px 15px;
     }
-    
+
     .timer-and-stats {
         flex-direction: column;
         gap: 30px;
     }
-    
+
     .timer-display {
         font-size: 3.5em;
         padding: 15px 30px;
         min-width: 250px;
     }
-    
+
     .timer-content {
         gap: 15px;
     }
-    
+
     .practice-stats {
         min-width: auto;
         padding: 20px;
     }
-    
+
     .content-below-timer {
         flex-direction: column;
         padding: 15px;
         gap: 20px;
     }
-    
+
     .sidebar {
         order: 2;
     }
-    
+
     .calendar-section {
         order: 1;
     }
@@ -805,67 +898,67 @@ body {
     .main-header {
         padding: 10px 15px;
     }
-    
+
     .main-header h1 {
         font-size: 1.3em;
     }
-    
+
     .timer-section {
         padding: 20px 10px;
     }
-    
+
     .timer-and-stats {
         flex-direction: column;
         gap: 25px;
     }
-    
+
     .timer-display {
         font-size: 2.8em;
         padding: 12px 25px;
         min-width: 200px;
     }
-    
+
     .practice-stats {
         padding: 15px;
     }
-    
+
     .practice-stats h3 {
         font-size: 1.2em;
     }
-    
+
     .timer-controls {
         flex-wrap: wrap;
         justify-content: center;
         gap: 8px;
     }
-    
+
     .timer-controls .btn {
         padding: 8px 16px;
         font-size: 14px;
     }
-    
+
     .user-info {
         flex-direction: column;
         text-align: center;
         gap: 8px;
     }
-    
+
     /* Modal Responsive */
     .modal-content {
         width: 95%;
         margin: 20px;
     }
-    
+
     .modal-header,
     .modal-body,
     .modal-footer {
         padding: 15px 20px;
     }
-    
+
     .modal-footer {
         flex-direction: column;
     }
-    
+
     .modal-footer .btn {
         width: 100%;
     }
