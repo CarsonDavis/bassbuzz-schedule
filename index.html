@@ -1,22 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bass Practice Tracker</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎸</text></svg>">
+    <title>BassBuzz Practice Tracker</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎸</text></svg>">
     <link rel="stylesheet" href="styles.css">
-    
+
     <!-- Google OAuth 2.0 SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
+
     <!-- AWS SDK for JavaScript -->
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1596.0.min.js"></script>
 </head>
+
 <body>
     <!-- Header with Title and Auth -->
     <header class="main-header">
-        <h1>🎸 Bass Practice Tracker</h1>
+        <h1>🎸 BassBuzz Practice Tracker</h1>
         <div class="auth-section">
             <div id="authContainer">
                 <button id="loginBtn" class="btn btn-auth">Login with Google</button>
@@ -45,7 +48,7 @@
                         <span>Today's Practice: <span id="todayTotal">0 min</span></span>
                     </div>
                 </div>
-                
+
                 <div class="practice-stats">
                     <h3>Practice Statistics</h3>
                     <div class="stat-item">
@@ -60,9 +63,9 @@
                         <div class="stat-label">Lessons per Day</div>
                         <div class="stat-value" id="lessonsPerDay">--</div>
                     </div>
-                    
+
                     <hr class="stats-separator">
-                    
+
                     <h4>Completion Dates</h4>
                     <div class="stat-item">
                         <div class="stat-label">1 lesson per day</div>
@@ -90,7 +93,7 @@
                         </div>
                         <span id="progressText">0 / 92 lessons completed</span>
                     </div>
-                    
+
                     <div class="modules-container" id="modulesContainer">
                         <!-- Modules will be populated by JavaScript -->
                     </div>
@@ -98,28 +101,28 @@
             </aside>
 
             <section class="calendar-section">
-            <div class="calendar-header">
-                <button id="prevMonth" class="btn btn-nav">&lt;</button>
-                <h2 id="currentMonth">January 2025</h2>
-                <button id="nextMonth" class="btn btn-nav">&gt;</button>
-            </div>
-            
-            <div class="calendar-grid" id="calendarGrid">
-                <!-- Calendar will be populated by JavaScript -->
-            </div>
-            
-            <div class="calendar-legend">
-                <div class="legend-item gradient-legend">
-                    <span class="legend-label">Practice Intensity:</span>
-                    <div class="gradient-bar">
-                        <span class="gradient-start">1min</span>
-                        <span class="gradient-end">60min+</span>
+                <div class="calendar-header">
+                    <button id="prevMonth" class="btn btn-nav">&lt;</button>
+                    <h2 id="currentMonth">January 2025</h2>
+                    <button id="nextMonth" class="btn btn-nav">&gt;</button>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- Calendar will be populated by JavaScript -->
+                </div>
+
+                <div class="calendar-legend">
+                    <div class="legend-item gradient-legend">
+                        <span class="legend-label">Practice Intensity:</span>
+                        <div class="gradient-bar">
+                            <span class="gradient-start">1min</span>
+                            <span class="gradient-end">60min+</span>
+                        </div>
                     </div>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color target-date"></span>
-                    <span>Estimated Completion</span>
-                </div>
+                    <div class="legend-item">
+                        <span class="legend-color target-date"></span>
+                        <span>Estimated Completion</span>
+                    </div>
             </section>
         </div>
     </main>
@@ -167,4 +170,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
