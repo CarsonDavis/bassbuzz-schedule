@@ -152,6 +152,7 @@ jobs:
             --exclude ".github/*" \
             --exclude "scripts/*" \
             --exclude "*.md" \
+            --include "info.md" \
             --exclude "planning.md/*"
             
           # HTML and JS files with shorter cache
