@@ -10,7 +10,7 @@ This app helps you track your progress through BazzBuzz's Beginner to Badass les
 Sign in with Google to sync your progress across devices. Otherwise data will be saved to the local browser.
 
 ### Practice Timer
-- Start/pause/reset timer for practice sessions
+- Start/stop/reset timer for practice sessions
 - Automatically logs practice time to your daily totals
 - Shows today's practice time
 
