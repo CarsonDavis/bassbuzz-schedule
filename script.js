@@ -2,6 +2,8 @@ class BassPracticeTracker {
     constructor() {
         this.lessons = [];
         this.currentTime = 0;
+        this.lastSavedTime = 0;
+        this.startTimestamp = null;
         this.timerInterval = null;
         this.isRunning = false;
         this.currentMonth = new Date().getMonth();
@@ -86,10 +88,11 @@ class BassPracticeTracker {
     startTimer() {
         if (!this.isRunning) {
             this.isRunning = true;
+            this.startTimestamp = Date.now() - (this.currentTime * 1000);
             this.timerInterval = setInterval(() => {
-                this.currentTime++;
+                this.updateCurrentTime();
                 this.updateTimerDisplay();
-            }, 1000);
+            }, 100);
         }
     }
 
@@ -97,6 +100,7 @@ class BassPracticeTracker {
         if (this.isRunning) {
             this.isRunning = false;
             clearInterval(this.timerInterval);
+            this.updateCurrentTime();
             this.savePracticeSession();
         }
     }
@@ -105,7 +109,15 @@ class BassPracticeTracker {
         this.isRunning = false;
         clearInterval(this.timerInterval);
         this.currentTime = 0;
+        this.lastSavedTime = 0;
+        this.startTimestamp = null;
         this.updateTimerDisplay();
+    }
+
+    updateCurrentTime() {
+        if (this.isRunning && this.startTimestamp) {
+            this.currentTime = Math.floor((Date.now() - this.startTimestamp) / 1000);
+        }
     }
 
     updateTimerDisplay() {
@@ -118,13 +130,15 @@ class BassPracticeTracker {
     }
 
     savePracticeSession() {
-        if (this.currentTime > 0) {
+        if (this.currentTime > this.lastSavedTime) {
+            const sessionTime = this.currentTime - this.lastSavedTime;
             const today = this.getLocalDateString();
             if (!this.progress.practiceLog[today]) {
                 this.progress.practiceLog[today] = 0;
             }
-            this.progress.practiceLog[today] += this.currentTime;
-            this.progress.totalPracticeTime += this.currentTime;
+            this.progress.practiceLog[today] += sessionTime;
+            this.progress.totalPracticeTime += sessionTime;
+            this.lastSavedTime = this.currentTime;
             
             // Set course start date if not already set
             if (!this.progress.courseStartDate) {
@@ -805,10 +819,8 @@ class BassPracticeTracker {
             element.textContent = 'Today';
         } else if (diffDays <= 7) {
             element.textContent = `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-        } else if (diffDays <= 30) {
-            const weeks = Math.ceil(diffDays / 7);
-            element.textContent = `${weeks} week${weeks !== 1 ? 's' : ''}`;
         } else {
+            // Always show actual date for 8+ days
             const options = { month: 'short', day: 'numeric' };
             if (targetDateObj.getFullYear() !== now.getFullYear()) {
                 options.year = 'numeric';
