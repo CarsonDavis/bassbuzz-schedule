@@ -32,6 +32,7 @@ class BassPracticeTracker {
         this.calculateTargetDate();
         this.updateStatsDisplay();
         this.initializeGoogleAuth();
+        this.setupSyncRetry();
     }
 
     async loadLessons() {
@@ -52,17 +53,34 @@ class BassPracticeTracker {
             if (!this.progress.hasOwnProperty('courseStartDate')) {
                 this.progress.courseStartDate = null;
             }
+            // Migration: add sync tracking fields if missing
+            if (!this.progress.hasOwnProperty('lastLocalUpdate')) {
+                this.progress.lastLocalUpdate = Date.now();
+            }
+            if (!this.progress.hasOwnProperty('pendingSync')) {
+                this.progress.pendingSync = false;
+            }
+            if (!this.progress.hasOwnProperty('syncVersion')) {
+                this.progress.syncVersion = 0;
+            }
         } else {
             this.progress = {
                 lessons: {},
                 practiceLog: {},
                 totalPracticeTime: 0,
-                courseStartDate: null
+                courseStartDate: null,
+                lastLocalUpdate: Date.now(),
+                pendingSync: false,
+                syncVersion: 0
             };
         }
     }
 
     saveProgress() {
+        // Update local modification tracking
+        this.progress.lastLocalUpdate = Date.now();
+        this.progress.pendingSync = true;
+        
         localStorage.setItem('bassProgress', JSON.stringify(this.progress));
         
         // Auto-sync to cloud if authenticated
@@ -880,6 +898,16 @@ class BassPracticeTracker {
         });
     }
 
+    setupSyncRetry() {
+        // Check for pending syncs every 30 seconds
+        setInterval(() => {
+            if (this.isAuthenticated && this.progress.pendingSync && !this.syncInProgress) {
+                console.log('Retrying pending sync...');
+                this.syncToCloud();
+            }
+        }, 30000);
+    }
+
     async showInfoModal() {
         const infoModal = document.getElementById('infoModal');
         const infoContent = document.getElementById('infoContent');
@@ -1095,12 +1123,21 @@ class BassPracticeTracker {
         if (!this.isAuthenticated || this.syncInProgress) return;
 
         this.syncInProgress = true;
+        console.log('Syncing to cloud...');
 
         try {
             const dynamoDb = new AWS.DynamoDB.DocumentClient();
+            
+            // Create a copy of progress for upload, with updated sync fields
+            const progressToUpload = {
+                ...this.progress,
+                syncVersion: this.progress.syncVersion + 1,
+                pendingSync: false
+            };
+            
             const item = {
                 userId: this.user.sub,
-                data: JSON.stringify(this.progress),
+                data: JSON.stringify(progressToUpload),
                 lastUpdated: Date.now(),
                 version: this.cloudVersion + 1
             };
@@ -1110,11 +1147,19 @@ class BassPracticeTracker {
                 Item: item
             }).promise();
 
+            // Update local state on successful sync
             this.cloudVersion = item.version;
-            this.lastSync = Date.now();
+            this.lastSync = item.lastUpdated;
+            this.progress.syncVersion = progressToUpload.syncVersion;
+            this.progress.pendingSync = false;
+            
+            // Save updated local state
+            localStorage.setItem('bassProgress', JSON.stringify(this.progress));
+            console.log('Sync to cloud successful, version:', this.cloudVersion);
             
         } catch (error) {
             console.error('Sync to cloud error:', error);
+            // Keep pendingSync flag set for retry
         } finally {
             this.syncInProgress = false;
         }
@@ -1124,6 +1169,7 @@ class BassPracticeTracker {
         if (!this.isAuthenticated || this.syncInProgress) return;
 
         this.syncInProgress = true;
+        console.log('Starting sync from cloud...');
 
         try {
             const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -1132,8 +1178,11 @@ class BassPracticeTracker {
                 Key: { userId: this.user.sub }
             }).promise();
 
-            if (result.Item && result.Item.lastUpdated > this.lastSync) {
+            if (result.Item) {
                 const cloudProgress = JSON.parse(result.Item.data);
+                console.log('Found cloud data, version:', result.Item.version);
+                
+                // Always merge - this handles both fresh login and updates
                 this.mergeProgress(cloudProgress);
                 this.cloudVersion = result.Item.version;
                 this.lastSync = result.Item.lastUpdated;
@@ -1144,36 +1193,84 @@ class BassPracticeTracker {
                 this.updateTodayStats();
                 this.calculateTargetDate();
                 this.updateStatsDisplay();
+                
+                // If we had pending changes, sync them back to cloud
+                if (this.progress.pendingSync) {
+                    console.log('Local changes detected, syncing back to cloud...');
+                    await this.syncToCloud();
+                }
+            } else {
+                console.log('No cloud data found, will create on first sync');
+                // Mark as pending sync so first local change creates cloud record
+                this.progress.pendingSync = true;
+                this.saveProgress();
             }
 
             
         } catch (error) {
             console.error('Sync from cloud error:', error);
+            // Mark pending sync so we retry later
+            this.progress.pendingSync = true;
+            this.saveProgress();
         } finally {
             this.syncInProgress = false;
         }
     }
 
     mergeProgress(cloudProgress) {
-        // Simple merge strategy: cloud wins for conflicts
-        // In a real app, you'd want more sophisticated conflict resolution
+        console.log('Merging progress - Local version:', this.progress.syncVersion, 'Cloud version:', cloudProgress.syncVersion || 0);
         
-        // Merge lesson progress
-        this.progress.lessons = { ...this.progress.lessons, ...cloudProgress.lessons };
+        // Intelligent merge strategy to preserve all practice data
+        const mergedProgress = {
+            lessons: {},
+            practiceLog: {},
+            totalPracticeTime: 0,
+            courseStartDate: null,
+            lastLocalUpdate: this.progress.lastLocalUpdate,
+            pendingSync: false,
+            syncVersion: (cloudProgress.syncVersion || 0) + 1
+        };
         
-        // Merge practice logs (keep highest time for each date)
-        for (const [date, time] of Object.entries(cloudProgress.practiceLog || {})) {
-            if (!this.progress.practiceLog[date] || this.progress.practiceLog[date] < time) {
-                this.progress.practiceLog[date] = time;
+        // Merge lesson progress: Union (never lose completed lessons)
+        const allLessons = { ...cloudProgress.lessons, ...this.progress.lessons };
+        for (const [lessonKey, completed] of Object.entries(allLessons)) {
+            if (completed) {
+                mergedProgress.lessons[lessonKey] = true;
             }
         }
         
-        // Update total practice time
-        this.progress.totalPracticeTime = Math.max(
-            this.progress.totalPracticeTime, 
-            cloudProgress.totalPracticeTime || 0
-        );
+        // Merge practice logs: Combine all dates, add times for same date
+        const allPracticeDates = new Set([
+            ...Object.keys(cloudProgress.practiceLog || {}),
+            ...Object.keys(this.progress.practiceLog || {})
+        ]);
         
+        for (const date of allPracticeDates) {
+            const cloudTime = cloudProgress.practiceLog?.[date] || 0;
+            const localTime = this.progress.practiceLog?.[date] || 0;
+            
+            // For same date, take the maximum (could be multiple sessions)
+            // This handles the case where user practiced on different devices
+            mergedProgress.practiceLog[date] = Math.max(cloudTime, localTime);
+        }
+        
+        // Recalculate total practice time from merged practice log
+        mergedProgress.totalPracticeTime = Object.values(mergedProgress.practiceLog)
+            .reduce((total, seconds) => total + seconds, 0);
+        
+        // Handle course start date: earliest date
+        const cloudStartDate = cloudProgress.courseStartDate;
+        const localStartDate = this.progress.courseStartDate;
+        if (cloudStartDate && localStartDate) {
+            mergedProgress.courseStartDate = cloudStartDate < localStartDate ? cloudStartDate : localStartDate;
+        } else {
+            mergedProgress.courseStartDate = cloudStartDate || localStartDate;
+        }
+        
+        console.log('Merge complete - Total time:', Math.floor(mergedProgress.totalPracticeTime / 3600), 'hours');
+        
+        // Update local progress with merged data
+        this.progress = mergedProgress;
         this.saveProgress();
     }
 
