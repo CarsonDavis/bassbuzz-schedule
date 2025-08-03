@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="darkreader-lock">
     <title>BassBuzz Practice Tracker</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎸</text></svg>">
@@ -123,6 +124,35 @@
                         <span class="legend-color target-date"></span>
                         <span>Estimated Completion</span>
                     </div>
+                </div>
+
+                <!-- Yearly Progress Chart -->
+                <div class="yearly-chart-section" data-darkreader-ignore>
+                    <div class="yearly-chart-header">
+                        <button id="prevYear" class="btn btn-nav">&lt;</button>
+                        <h3 id="currentYear">2025</h3>
+                        <button id="nextYear" class="btn btn-nav">&gt;</button>
+                    </div>
+                    <div class="yearly-chart-container" data-darkreader-ignore>
+                        <div class="yearly-chart-months" id="yearlyChartMonths" data-darkreader-ignore>
+                            <!-- Month labels will be populated by JavaScript -->
+                        </div>
+                        <div class="yearly-chart-grid" id="yearlyChartGrid" data-darkreader-ignore>
+                            <!-- Year grid will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="yearly-chart-legend">
+                        <span class="legend-text">Less</span>
+                        <div class="contribution-levels">
+                            <div class="level-0" title="No practice"></div>
+                            <div class="level-1" title="1-15 minutes"></div>
+                            <div class="level-2" title="16-30 minutes"></div>
+                            <div class="level-3" title="31-45 minutes"></div>
+                            <div class="level-4" title="46+ minutes"></div>
+                        </div>
+                        <span class="legend-text">More</span>
+                    </div>
+                </div>
             </section>
         </div>
     </main>

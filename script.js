@@ -8,6 +8,7 @@ class BassPracticeTracker {
         this.isRunning = false;
         this.currentMonth = new Date().getMonth();
         this.currentYear = new Date().getFullYear();
+        this.currentChartYear = new Date().getFullYear();
         
         // Authentication state
         this.isAuthenticated = false;
@@ -16,6 +17,9 @@ class BassPracticeTracker {
         this.lastSync = 0;
         this.cloudVersion = 0;
         this.syncInProgress = false;
+        
+        // Global tooltip element
+        this.globalTooltip = null;
         
         this.init();
     }
@@ -26,8 +30,10 @@ class BassPracticeTracker {
         this.setupTimerControls();
         this.setupAuthControls();
         this.setupInfoModal();
+        this.createGlobalTooltip();
         this.renderModules();
         this.renderCalendar();
+        this.renderYearlyChart();
         this.updateTodayStats();
         this.calculateTargetDate();
         this.updateStatsDisplay();
@@ -147,6 +153,57 @@ class BassPracticeTracker {
         document.getElementById('timerDisplay').textContent = display;
     }
 
+    createGlobalTooltip() {
+        // Create a single global tooltip element
+        this.globalTooltip = document.createElement('div');
+        this.globalTooltip.className = 'yearly-chart-tooltip';
+        this.globalTooltip.style.position = 'fixed';
+        this.globalTooltip.style.visibility = 'hidden';
+        this.globalTooltip.style.opacity = '0';
+        this.globalTooltip.style.zIndex = '9999';
+        this.globalTooltip.style.pointerEvents = 'none';
+        
+        // Append to body
+        document.body.appendChild(this.globalTooltip);
+    }
+
+    getViewportBounds() {
+        return {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            scrollX: window.scrollX,
+            scrollY: window.scrollY
+        };
+    }
+
+    showTooltip(element, content) {
+        if (!this.globalTooltip) return;
+
+        // Update tooltip content
+        this.globalTooltip.innerHTML = content;
+        
+        // Get element position
+        const elementRect = element.getBoundingClientRect();
+        
+        // Simple positioning - always above and centered, no complex calculations
+        const left = elementRect.left + elementRect.width / 2;
+        const top = elementRect.top - 60; // Fixed 60px above
+        
+        // Position tooltip
+        this.globalTooltip.style.left = `${left}px`;
+        this.globalTooltip.style.top = `${top}px`;
+        this.globalTooltip.style.transform = 'translateX(-50%)';
+        this.globalTooltip.style.visibility = 'visible';
+        this.globalTooltip.style.opacity = '1';
+    }
+
+    hideTooltip() {
+        if (this.globalTooltip) {
+            this.globalTooltip.style.visibility = 'hidden';
+            this.globalTooltip.style.opacity = '0';
+        }
+    }
+
     savePracticeSession() {
         if (this.currentTime > this.lastSavedTime) {
             const sessionTime = this.currentTime - this.lastSavedTime;
@@ -166,6 +223,7 @@ class BassPracticeTracker {
             this.saveProgress();
             this.updateTodayStats();
             this.renderCalendar();
+            this.renderYearlyChart();
             this.updateStatsDisplay();
         }
     }
@@ -359,6 +417,150 @@ class BassPracticeTracker {
             
             grid.appendChild(dayDiv);
         }
+    }
+
+    renderYearlyChart() {
+        const grid = document.getElementById('yearlyChartGrid');
+        const monthsContainer = document.getElementById('yearlyChartMonths');
+        
+        if (!grid || !monthsContainer) {
+            console.error('Yearly chart containers not found');
+            return;
+        }
+        
+        // Update year display
+        document.getElementById('currentYear').textContent = this.currentChartYear;
+        
+        // Setup year navigation
+        document.getElementById('prevYear').onclick = () => {
+            this.currentChartYear--;
+            this.renderYearlyChart();
+        };
+        
+        document.getElementById('nextYear').onclick = () => {
+            this.currentChartYear++;
+            this.renderYearlyChart();
+        };
+
+        // Clear containers
+        grid.innerHTML = '';
+        monthsContainer.innerHTML = '';
+        
+        // Generate month labels
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        // Calculate weeks and month positions
+        const yearStart = new Date(this.currentChartYear, 0, 1);
+        const yearEnd = new Date(this.currentChartYear, 11, 31);
+        
+        // Find first Sunday of the year (or before)
+        const firstSunday = new Date(yearStart);
+        firstSunday.setDate(yearStart.getDate() - yearStart.getDay());
+        
+        // Generate month labels based on first occurrence of each month
+        let monthPositions = [];
+        let tempDate = new Date(firstSunday);
+        
+        for (let week = 0; week < 53; week++) {
+            const monthInWeek = tempDate.getMonth();
+            const yearInWeek = tempDate.getFullYear();
+            
+            if (yearInWeek === this.currentChartYear) {
+                if (!monthPositions.find(m => m.month === monthInWeek)) {
+                    monthPositions.push({
+                        month: monthInWeek,
+                        week: week,
+                        name: monthNames[monthInWeek]
+                    });
+                }
+            }
+            
+            tempDate.setDate(tempDate.getDate() + 7);
+        }
+        
+        // Create month labels
+        monthPositions.forEach(pos => {
+            const monthDiv = document.createElement('div');
+            monthDiv.className = 'yearly-chart-month';
+            monthDiv.textContent = pos.name;
+            monthDiv.style.gridColumnStart = pos.week + 1;
+            monthDiv.style.gridColumnEnd = 'span 4'; // Span multiple weeks for visibility
+            monthsContainer.appendChild(monthDiv);
+        });
+        
+        // Generate daily grid
+        let currentDate = new Date(firstSunday);
+        const today = this.getLocalDateString();
+        for (let week = 0; week < 53; week++) {
+            for (let day = 0; day < 7; day++) {
+                const dateStr = this.getLocalDateString(currentDate);
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'yearly-chart-day';
+                dayDiv.dataset.date = dateStr;
+                
+                // Check if this date is in the future
+                const isFuture = dateStr > today;
+                
+                if (isFuture) {
+                    dayDiv.classList.add('future');
+                } else {
+                    // Add practice data
+                    const practiceTime = this.progress.practiceLog[dateStr] || 0;
+                    const practiceMinutes = Math.floor(practiceTime / 60);
+                    const level = this.getPracticeLevel(practiceMinutes);
+                    
+                    dayDiv.classList.add(`level-${level}`);
+                    
+                    // Add click handler
+                    dayDiv.addEventListener('click', () => {
+                        if (!isFuture) {
+                            this.editPracticeTime(dateStr, practiceMinutes);
+                        }
+                    });
+                }
+                
+                // Add tooltip
+                const practiceTime = this.progress.practiceLog[dateStr] || 0;
+                this.addYearlyChartTooltip(dayDiv, new Date(currentDate), practiceTime);
+                
+                grid.appendChild(dayDiv);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+    }
+
+    getPracticeLevel(minutes) {
+        if (minutes === 0) return 0;
+        if (minutes <= 15) return 1;
+        if (minutes <= 30) return 2;
+        if (minutes <= 45) return 3;
+        return 4; // 46+ minutes
+    }
+
+    addYearlyChartTooltip(dayDiv, date, practiceTime) {
+        const practiceMinutes = Math.floor(practiceTime / 60);
+        
+        dayDiv.addEventListener('mouseenter', (e) => {
+            const dateStr = date.toLocaleDateString('en-US', { 
+                weekday: 'short',
+                month: 'short', 
+                day: 'numeric'
+            });
+            
+            const practiceText = practiceMinutes === 0 ? 'No practice' : 
+                               practiceMinutes === 1 ? '1 minute' : 
+                               `${practiceMinutes} minutes`;
+            
+            const content = `${practiceText}<br><strong>${dateStr}</strong>`;
+            
+            // Use the global tooltip with safe positioning
+            this.showTooltip(dayDiv, content);
+        });
+        
+        dayDiv.addEventListener('mouseleave', () => {
+            this.hideTooltip();
+        });
     }
 
     calculateTargetDate() {
@@ -641,6 +843,7 @@ class BassPracticeTracker {
         // Save and refresh displays
         this.saveProgress();
         this.renderCalendar();
+        this.renderYearlyChart();
         this.updateTodayStats();
         this.calculateTargetDate();
         this.updateStatsDisplay();
@@ -1190,6 +1393,7 @@ class BassPracticeTracker {
                 // Update UI after sync
                 this.renderModules();
                 this.renderCalendar();
+                this.renderYearlyChart();
                 this.updateTodayStats();
                 this.calculateTargetDate();
                 this.updateStatsDisplay();

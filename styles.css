@@ -564,6 +564,193 @@ body {
     background-color: #f39c12;
 }
 
+/* Yearly Chart Styles */
+/* Dark Reader: Please preserve these colors for the contribution chart */
+:root {
+    --darkreader-inline-bgcolor: #2c3e50;
+    --darkreader-inline-color: #ecf0f1;
+}
+
+[data-darkreader-inline-bgcolor] .yearly-chart-day {
+    background-color: var(--darkreader-inline-bgcolor) !important;
+}
+
+.yearly-chart-section {
+    -webkit-filter: none !important;
+    filter: none !important;
+}
+.yearly-chart-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #34495e !important;
+    background-color: transparent !important;
+}
+
+.yearly-chart-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.yearly-chart-header h3 {
+    color: #ecf0f1 !important;
+    font-size: 1.4em;
+    margin: 0;
+}
+
+.yearly-chart-container {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: visible;
+    margin-bottom: 15px;
+    background-color: transparent !important;
+}
+
+.yearly-chart-months {
+    display: grid !important;
+    grid-template-columns: repeat(53, 12px) !important;
+    gap: 2px;
+    margin-bottom: 8px;
+    margin-left: 20px;
+}
+
+.yearly-chart-month {
+    font-size: 0.8em;
+    color: #95a5a6 !important;
+    text-align: left;
+}
+
+.yearly-chart-grid {
+    display: grid !important;
+    grid-template-columns: repeat(53, 12px) !important;
+    grid-template-rows: repeat(7, 12px) !important;
+    gap: 2px;
+    margin-left: 20px;
+    grid-auto-flow: column;
+}
+
+.yearly-chart-day {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background-color: #2c3e50 !important;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.yearly-chart-day:hover {
+    border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.yearly-chart-day.future {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.yearly-chart-day.future:hover {
+    transform: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Practice intensity levels */
+.yearly-chart-day.level-0 {
+    background-color: #2c3e50 !important;
+}
+
+.yearly-chart-day.level-1 {
+    background-color: #39d353 !important; /* GitHub green level 1 */
+}
+
+.yearly-chart-day.level-2 {
+    background-color: #26a641 !important; /* GitHub green level 2 */
+}
+
+.yearly-chart-day.level-3 {
+    background-color: #006d32 !important; /* GitHub green level 3 */
+}
+
+.yearly-chart-day.level-4 {
+    background-color: #0d4429 !important; /* GitHub green level 4 */
+}
+
+.yearly-chart-legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.8em;
+    color: #95a5a6;
+}
+
+.legend-text {
+    color: #95a5a6;
+}
+
+.contribution-levels {
+    display: flex;
+    gap: 2px;
+}
+
+.contribution-levels > div {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.contribution-levels .level-0 {
+    background-color: #2c3e50 !important;
+}
+
+.contribution-levels .level-1 {
+    background-color: #39d353 !important;
+}
+
+.contribution-levels .level-2 {
+    background-color: #26a641 !important;
+}
+
+.contribution-levels .level-3 {
+    background-color: #006d32 !important;
+}
+
+.contribution-levels .level-4 {
+    background-color: #0d4429 !important;
+}
+
+/* Tooltip for yearly chart */
+.yearly-chart-tooltip {
+    position: absolute;
+    background: #34495e;
+    color: #ecf0f1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    border: 1px solid #4a5f7a;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.yearly-chart-tooltip.show {
+    opacity: 1;
+}
+
+.yearly-chart-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #34495e;
+}
+
 /* Animations */
 @keyframes pulse {
     0% {
@@ -924,6 +1111,27 @@ body {
         justify-content: center;
         width: 100%;
     }
+
+    /* Yearly Chart Mobile */
+    .yearly-chart-grid {
+        grid-template-columns: repeat(53, 10px);
+        grid-template-rows: repeat(7, 10px);
+        gap: 1px;
+    }
+
+    .yearly-chart-day {
+        width: 10px;
+        height: 10px;
+    }
+
+    .yearly-chart-months {
+        margin-left: 16px;
+    }
+
+    .yearly-chart-month {
+        min-width: 42px;
+        font-size: 0.7em;
+    }
 }
 
 @media (max-width: 480px) {
@@ -993,5 +1201,42 @@ body {
 
     .modal-footer .btn {
         width: 100%;
+    }
+
+    /* Yearly Chart Smallest Mobile */
+    .yearly-chart-grid {
+        grid-template-columns: repeat(53, 8px);
+        grid-template-rows: repeat(7, 8px);
+        gap: 1px;
+        margin-left: 12px;
+    }
+
+    .yearly-chart-day {
+        width: 8px;
+        height: 8px;
+    }
+
+    .yearly-chart-months {
+        margin-left: 12px;
+    }
+
+    .yearly-chart-month {
+        min-width: 34px;
+        font-size: 0.6em;
+    }
+
+    .yearly-chart-section {
+        margin-top: 20px;
+        padding-top: 15px;
+    }
+
+    .yearly-chart-legend {
+        font-size: 0.7em;
+        gap: 6px;
+    }
+
+    .contribution-levels > div {
+        width: 8px;
+        height: 8px;
     }
 }
