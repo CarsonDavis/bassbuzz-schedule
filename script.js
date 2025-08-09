@@ -21,22 +21,27 @@ class BassPracticeTracker {
         // Global tooltip element
         this.globalTooltip = null;
         
+        // Color scaling preference
+        this.linearColorScale = false;
+        
         this.init();
     }
+
 
     async init() {
         await this.loadLessons();
         this.loadProgress();
+        this.linearColorScale = this.progress.linearColorScale;
         this.setupTimerControls();
         this.setupAuthControls();
         this.setupInfoModal();
         this.createGlobalTooltip();
         this.renderModules();
-        this.renderCalendar();
-        this.renderYearlyChart();
         this.updateTodayStats();
-        this.calculateTargetDate();
+        this.calculateTargetDate(); // Calculate target date BEFORE rendering calendars
         this.updateStatsDisplay();
+        this.renderCalendar();     // Render calendars AFTER target date is calculated
+        this.renderYearlyChart();
         this.initializeGoogleAuth();
         this.setupSyncRetry();
     }
@@ -66,6 +71,9 @@ class BassPracticeTracker {
             if (!this.progress.hasOwnProperty('pendingSync')) {
                 this.progress.pendingSync = false;
             }
+            if (!this.progress.hasOwnProperty('linearColorScale')) {
+                this.progress.linearColorScale = false;
+            }
             if (!this.progress.hasOwnProperty('syncVersion')) {
                 this.progress.syncVersion = 0;
             }
@@ -77,7 +85,8 @@ class BassPracticeTracker {
                 courseStartDate: null,
                 lastLocalUpdate: Date.now(),
                 pendingSync: false,
-                syncVersion: 0
+                syncVersion: 0,
+                linearColorScale: false
             };
         }
     }
@@ -222,9 +231,10 @@ class BassPracticeTracker {
             
             this.saveProgress();
             this.updateTodayStats();
+            this.calculateTargetDate(); // Calculate target date before rendering
+            this.updateStatsDisplay();
             this.renderCalendar();
             this.renderYearlyChart();
-            this.updateStatsDisplay();
         }
     }
 
@@ -255,7 +265,6 @@ class BassPracticeTracker {
                 this.progress.lessons[`${module.id}-${lesson}`]
             ).length;
             
-            const progressPercent = (completedLessons / module.lessons.length) * 100;
             const isOpen = openModules.has(module.id.toString());
 
             moduleDiv.innerHTML = `
@@ -302,6 +311,8 @@ class BassPracticeTracker {
                 this.renderModules();
                 this.calculateTargetDate();
                 this.updateStatsDisplay();
+                this.renderCalendar();
+                this.renderYearlyChart();
             }
         });
 
@@ -364,7 +375,6 @@ class BassPracticeTracker {
 
         // Get calendar data
         const firstDay = new Date(this.currentYear, this.currentMonth, 1);
-        const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
         const startDate = new Date(firstDay);
         startDate.setDate(startDate.getDate() - firstDay.getDay());
 
@@ -412,11 +422,26 @@ class BassPracticeTracker {
             
             // Check if this is the target completion date
             if (this.targetDate && dateStr === this.targetDate) {
+                console.log('MONTHLY CALENDAR: Adding target-date class for', dateStr);
                 dayDiv.classList.add('target-date');
             }
             
             grid.appendChild(dayDiv);
         }
+        
+        // Setup color scale toggle (only once)
+        const colorScaleToggle = document.getElementById('colorScaleToggle');
+        if (colorScaleToggle && !colorScaleToggle.hasEventListener) {
+            colorScaleToggle.textContent = this.linearColorScale ? 'Linear' : 'Curved';
+            colorScaleToggle.onclick = () => {
+                this.toggleColorScale();
+            };
+            colorScaleToggle.hasEventListener = true; // Prevent duplicate listeners
+        }
+        
+        // Debug: Log rendering info
+        console.log('MONTHLY CALENDAR RENDER - Current targetDate:', this.targetDate);
+        console.log('MONTHLY CALENDAR RENDER - Current month/year:', this.currentMonth, this.currentYear);
     }
 
     renderYearlyChart() {
@@ -431,6 +456,11 @@ class BassPracticeTracker {
         // Update year display
         document.getElementById('currentYear').textContent = this.currentChartYear;
         
+        // Debug: Log yearly chart info
+        console.log('YEARLY CHART RENDER - Current targetDate:', this.targetDate);
+        console.log('YEARLY CHART RENDER - Current chart year:', this.currentChartYear);
+        console.log('YEARLY CHART RENDER - Target date year:', this.targetDate ? new Date(this.targetDate).getFullYear() : 'no target date');
+        
         // Setup year navigation
         document.getElementById('prevYear').onclick = () => {
             this.currentChartYear--;
@@ -441,6 +471,7 @@ class BassPracticeTracker {
             this.currentChartYear++;
             this.renderYearlyChart();
         };
+        
 
         // Clear containers
         grid.innerHTML = '';
@@ -452,7 +483,6 @@ class BassPracticeTracker {
         
         // Calculate weeks and month positions
         const yearStart = new Date(this.currentChartYear, 0, 1);
-        const yearEnd = new Date(this.currentChartYear, 11, 31);
         
         // Find first Sunday of the year (or before)
         const firstSunday = new Date(yearStart);
@@ -492,6 +522,8 @@ class BassPracticeTracker {
         // Generate daily grid
         let currentDate = new Date(firstSunday);
         const today = this.getLocalDateString();
+        console.log('YEARLY CHART: Starting from date:', this.getLocalDateString(currentDate));
+        console.log('YEARLY CHART: Looking for target date:', this.targetDate);
         for (let week = 0; week < 53; week++) {
             for (let day = 0; day < 7; day++) {
                 const dateStr = this.getLocalDateString(currentDate);
@@ -502,21 +534,34 @@ class BassPracticeTracker {
                 // Check if this date is in the future
                 const isFuture = dateStr > today;
                 
-                if (isFuture) {
+                // Check if this is the target completion date FIRST (before future check)
+                if (this.targetDate && dateStr === this.targetDate) {
+                    console.log('YEARLY CALENDAR: *** MATCH! Adding target-date for', dateStr);
+                    dayDiv.classList.add('target-date');
+                    // Override any practice color with target date styling
+                    dayDiv.style.backgroundColor = '#9b59b6';
+                } else if (isFuture) {
                     dayDiv.classList.add('future');
                 } else {
                     // Add practice data
                     const practiceTime = this.progress.practiceLog[dateStr] || 0;
                     const practiceMinutes = Math.floor(practiceTime / 60);
-                    const level = this.getPracticeLevel(practiceMinutes);
                     
-                    dayDiv.classList.add(`level-${level}`);
-                    
-                    // Add click handler
+                    // Apply dynamic color using the unified function
+                    const practiceColor = this.getPracticeColor(practiceMinutes);
+                    if (practiceColor) {
+                        dayDiv.style.backgroundColor = practiceColor;
+                    } else {
+                        dayDiv.classList.add('level-0'); // Keep level-0 class for no practice
+                    }
+                }
+                
+                // Add click handler
+                if (!isFuture) {
                     dayDiv.addEventListener('click', () => {
-                        if (!isFuture) {
-                            this.editPracticeTime(dateStr, practiceMinutes);
-                        }
+                        const practiceTime = this.progress.practiceLog[dateStr] || 0;
+                        const practiceMinutes = Math.floor(practiceTime / 60);
+                        this.editPracticeTime(dateStr, practiceMinutes);
                     });
                 }
                 
@@ -530,18 +575,10 @@ class BassPracticeTracker {
         }
     }
 
-    getPracticeLevel(minutes) {
-        if (minutes === 0) return 0;
-        if (minutes <= 15) return 1;
-        if (minutes <= 30) return 2;
-        if (minutes <= 45) return 3;
-        return 4; // 46+ minutes
-    }
-
     addYearlyChartTooltip(dayDiv, date, practiceTime) {
         const practiceMinutes = Math.floor(practiceTime / 60);
         
-        dayDiv.addEventListener('mouseenter', (e) => {
+        dayDiv.addEventListener('mouseenter', () => {
             const dateStr = date.toLocaleDateString('en-US', { 
                 weekday: 'short',
                 month: 'short', 
@@ -564,6 +601,7 @@ class BassPracticeTracker {
     }
 
     calculateTargetDate() {
+        console.log('=== CALCULATING TARGET DATE ===');
         // Calculate all three target dates
         this.targetDates = {
             onePerDay: this.calculateOnePerDayTarget(),
@@ -571,8 +609,13 @@ class BassPracticeTracker {
             timeRate: this.calculateTimeRateTarget()
         };
         
+        console.log('Target dates calculated:', this.targetDates);
+        
         // Keep the original targetDate for calendar display (use lesson rate as primary)
         this.targetDate = this.targetDates.lessonRate;
+        
+        console.log('Final targetDate set to:', this.targetDate);
+        console.log('=== END TARGET DATE CALCULATION ===');
     }
 
     calculateOnePerDayTarget() {
@@ -591,25 +634,36 @@ class BassPracticeTracker {
     }
 
     calculateLessonRateTarget() {
+        console.log('--- Calculating Lesson Rate Target ---');
         const totalLessons = this.lessons.reduce((sum, module) => sum + module.lessons.length, 0);
         const completedLessons = Object.values(this.progress.lessons).filter(Boolean).length;
         const remainingLessons = totalLessons - completedLessons;
         
+        console.log('Total lessons:', totalLessons);
+        console.log('Completed lessons:', completedLessons);
+        console.log('Remaining lessons:', remainingLessons);
+        
         if (remainingLessons <= 0) {
+            console.log('No remaining lessons - returning null');
             return null;
         }
 
         // If no lessons completed, can't calculate
         if (completedLessons === 0) {
+            console.log('No lessons completed - returning null');
             return null;
         }
         
+        console.log('Course start date:', this.progress.courseStartDate);
+        
         // If no start date, try to set it based on practice log
         if (!this.progress.courseStartDate) {
+            console.log('No course start date, trying to set it...');
             this.setCourseStartDate();
             
             // If still no start date, can't calculate
             if (!this.progress.courseStartDate) {
+                console.log('Still no course start date - returning null');
                 return null;
             }
             
@@ -621,22 +675,39 @@ class BassPracticeTracker {
         const today = new Date();
         const daysSinceStart = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
         
+        console.log('Start date:', startDate);
+        console.log('Today:', today);
+        console.log('Days since start:', daysSinceStart);
+        
         // Avoid division by zero
         if (daysSinceStart <= 0) {
+            console.log('Days since start <= 0 - returning null');
             return null;
         }
 
         const lessonsPerDay = completedLessons / daysSinceStart;
         
+        console.log('Lessons per day (raw):', lessonsPerDay);
+        
         // Ensure minimum reasonable learning rate (at least 1 lesson per month)
         const minLessonsPerDay = 1 / 30; // 1 lesson per 30 days
         const effectiveLessonsPerDay = Math.max(lessonsPerDay, minLessonsPerDay);
+
+        console.log('Effective lessons per day:', effectiveLessonsPerDay);
 
         // Calculate projected completion date
         const daysToComplete = Math.ceil(remainingLessons / effectiveLessonsPerDay);
         const targetDate = new Date();
         targetDate.setDate(targetDate.getDate() + daysToComplete);
-        return this.getLocalDateString(targetDate);
+        
+        console.log('Days to complete:', daysToComplete);
+        console.log('Target date object:', targetDate);
+        
+        const targetDateString = this.getLocalDateString(targetDate);
+        console.log('Target date string:', targetDateString);
+        console.log('--- End Lesson Rate Target ---');
+        
+        return targetDateString;
     }
 
     calculateTimeRateTarget() {
@@ -668,7 +739,7 @@ class BassPracticeTracker {
         const practiceMinutes = totalPracticeSeconds / 60;
         
         // Calculate days with practice
-        const daysWithPractice = practiceEntries.filter(([date, time]) => time > 0).length;
+        const daysWithPractice = practiceEntries.filter(([_, time]) => time > 0).length;
         if (daysWithPractice === 0) {
             return null;
         }
@@ -842,22 +913,46 @@ class BassPracticeTracker {
         
         // Save and refresh displays
         this.saveProgress();
+        this.updateTodayStats();
+        this.calculateTargetDate(); // Calculate target date before rendering
+        this.updateStatsDisplay();
         this.renderCalendar();
         this.renderYearlyChart();
-        this.updateTodayStats();
-        this.calculateTargetDate();
-        this.updateStatsDisplay();
     }
 
     getPracticeColor(minutes) {
         if (minutes === 0) return null; // Default background
         
-        // Smooth scaling: 1-60 minutes = full color range
-        const intensity = Math.min(minutes / 60, 1);
+        const rawIntensity = Math.min(minutes / 120, 1);
+        
+        let intensity;
+        if (this.linearColorScale) {
+            // Linear scaling
+            intensity = rawIntensity;
+        } else {
+            // Subtle non-linear scaling: blend linear and square root for gentler curve
+            const sqrtIntensity = Math.sqrt(rawIntensity);
+            intensity = (rawIntensity + sqrtIntensity) / 2; // Average of linear and sqrt
+        }
+        
         const saturation = 40 + (intensity * 30); // 40% to 70%
-        const lightness = 70 - (intensity * 35);  // 70% to 35%
+        const lightness = 85 - (intensity * 60);  // 85% to 25% (lighter to darker)
         
         return `hsl(120, ${saturation}%, ${lightness}%)`;
+    }
+
+    toggleColorScale() {
+        this.linearColorScale = !this.linearColorScale;
+        this.progress.linearColorScale = this.linearColorScale;
+        this.saveProgress();
+        
+        // Update button text
+        const toggleButton = document.getElementById('colorScaleToggle');
+        toggleButton.textContent = this.linearColorScale ? 'Linear' : 'Curved';
+        
+        // Refresh both calendars
+        this.renderCalendar();
+        this.renderYearlyChart();
     }
 
     // Helper function to get local date in YYYY-MM-DD format
@@ -874,8 +969,8 @@ class BassPracticeTracker {
         if (practiceEntries.length > 0) {
             // Find earliest date with practice time > 0
             const earliestDate = practiceEntries
-                .filter(([date, time]) => time > 0)
-                .map(([date, time]) => date)
+                .filter(([_, time]) => time > 0)
+                .map(([date, _]) => date)
                 .sort()[0];
             
             if (earliestDate) {
@@ -1013,7 +1108,7 @@ class BassPracticeTracker {
         const practiceMinutes = totalPracticeSeconds / 60;
         
         // Calculate days with practice
-        const daysWithPractice = practiceEntries.filter(([date, time]) => time > 0).length;
+        const daysWithPractice = practiceEntries.filter(([_, time]) => time > 0).length;
         if (daysWithPractice === 0) {
             return 0;
         }
@@ -1206,10 +1301,6 @@ class BassPracticeTracker {
     }
 
     handleGoogleCallback(response) {
-        console.log('=== GOOGLE CALLBACK DEBUG ===');
-        console.log('Full response:', response);
-        console.log('Response type:', typeof response);
-        console.log('Response keys:', Object.keys(response || {}));
         
         try {
             if (!response) {
@@ -1222,12 +1313,9 @@ class BassPracticeTracker {
                 return;
             }
             
-            console.log('Credential found:', response.credential.substring(0, 50) + '...');
-            console.log('Credential length:', response.credential.length);
             
             // Decode the JWT token
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
-            console.log('Decoded payload:', payload);
             
             this.user = {
                 sub: payload.sub,
@@ -1239,8 +1327,6 @@ class BassPracticeTracker {
             this.googleIdToken = response.credential;
             this.isAuthenticated = true;
             
-            console.log('Set googleIdToken:', this.googleIdToken ? 'YES' : 'NO');
-            console.log('User authenticated:', this.isAuthenticated);
             
             this.updateAuthUI();
             this.initializeAWS();
@@ -1326,7 +1412,6 @@ class BassPracticeTracker {
         if (!this.isAuthenticated || this.syncInProgress) return;
 
         this.syncInProgress = true;
-        console.log('Syncing to cloud...');
 
         try {
             const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -1372,7 +1457,6 @@ class BassPracticeTracker {
         if (!this.isAuthenticated || this.syncInProgress) return;
 
         this.syncInProgress = true;
-        console.log('Starting sync from cloud...');
 
         try {
             const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -1383,7 +1467,6 @@ class BassPracticeTracker {
 
             if (result.Item) {
                 const cloudProgress = JSON.parse(result.Item.data);
-                console.log('Found cloud data, version:', result.Item.version);
                 
                 // Always merge - this handles both fresh login and updates
                 this.mergeProgress(cloudProgress);
@@ -1392,11 +1475,11 @@ class BassPracticeTracker {
                 
                 // Update UI after sync
                 this.renderModules();
-                this.renderCalendar();
-                this.renderYearlyChart();
                 this.updateTodayStats();
                 this.calculateTargetDate();
                 this.updateStatsDisplay();
+                this.renderCalendar();
+                this.renderYearlyChart();
                 
                 // If we had pending changes, sync them back to cloud
                 if (this.progress.pendingSync) {
@@ -1404,7 +1487,6 @@ class BassPracticeTracker {
                     await this.syncToCloud();
                 }
             } else {
-                console.log('No cloud data found, will create on first sync');
                 // Mark as pending sync so first local change creates cloud record
                 this.progress.pendingSync = true;
                 this.saveProgress();
@@ -1422,7 +1504,6 @@ class BassPracticeTracker {
     }
 
     mergeProgress(cloudProgress) {
-        console.log('Merging progress - Local version:', this.progress.syncVersion, 'Cloud version:', cloudProgress.syncVersion || 0);
         
         // Intelligent merge strategy to preserve all practice data
         const mergedProgress = {
@@ -1471,11 +1552,73 @@ class BassPracticeTracker {
             mergedProgress.courseStartDate = cloudStartDate || localStartDate;
         }
         
-        console.log('Merge complete - Total time:', Math.floor(mergedProgress.totalPracticeTime / 3600), 'hours');
         
         // Update local progress with merged data
         this.progress = mergedProgress;
         this.saveProgress();
+    }
+
+    // Manual data import function
+    importJuly2025Data() {
+        const july2025Data = {
+            '2025-07-01': 30 * 60,  // 30m
+            '2025-07-02': 30 * 60,  // 30m
+            '2025-07-03': 30 * 60,  // 30m
+            '2025-07-04': 30 * 60,  // 30m
+            '2025-07-05': 30 * 60,  // 30m
+            '2025-07-06': 26 * 60,  // 26m
+            '2025-07-07': 57 * 60,  // 57m
+            '2025-07-08': 30 * 60,  // 30m
+            '2025-07-09': 35 * 60,  // 35m
+            '2025-07-10': 40 * 60,  // 40m
+            '2025-07-11': 32 * 60,  // 32m
+            '2025-07-12': 91 * 60,  // 91m
+            '2025-07-13': 144 * 60, // 144m
+            '2025-07-14': 46 * 60,  // 46m
+            '2025-07-15': 40 * 60,  // 40m
+            '2025-07-16': 33 * 60,  // 33m
+            '2025-07-17': 67 * 60,  // 67m
+            '2025-07-18': 85 * 60,  // 85m
+            '2025-07-19': 55 * 60,  // 55m
+            '2025-07-20': 165 * 60, // 165m
+            '2025-07-21': 46 * 60,  // 46m
+            '2025-07-22': 59 * 60,  // 59m
+            '2025-07-23': 47 * 60,  // 47m
+            '2025-07-24': 70 * 60,  // 70m
+            '2025-07-25': 30 * 60,  // 30m
+            '2025-07-26': 60 * 60,  // 60m
+            '2025-07-27': 101 * 60, // 101m
+            '2025-07-28': 56 * 60,  // 56m
+            '2025-07-29': 37 * 60,  // 37m
+            '2025-07-30': 82 * 60,  // 82m
+            '2025-07-31': 56 * 60,  // 56m
+            '2025-08-01': 65 * 60,  // 65m
+            '2025-08-02': 64 * 60,  // 64m
+            '2025-08-03': 72 * 60,  // 72m
+            '2025-08-04': 59 * 60,  // 59m
+            '2025-08-05': 36 * 60,  // 36m
+            '2025-08-06': 71 * 60,  // 71m
+            '2025-08-07': 82 * 60,  // 82m
+            '2025-08-08': 96 * 60   // 96m
+        };
+
+        // Add all the practice data to current progress
+        Object.assign(this.progress.practiceLog, july2025Data);
+        
+        // Recalculate total practice time
+        this.progress.totalPracticeTime = Object.values(this.progress.practiceLog)
+            .reduce((total, seconds) => total + seconds, 0);
+        
+        // Save to localStorage
+        this.saveProgress();
+        
+        // Refresh the displays
+        this.renderCalendar();
+        this.renderYearlyChart();
+        this.updateStatsDisplay();
+        
+        console.log('July 2025 data imported successfully!');
+        console.log('Total practice time:', Math.floor(this.progress.totalPracticeTime / 3600), 'hours');
     }
 
 }

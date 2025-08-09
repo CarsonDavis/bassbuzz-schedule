@@ -141,6 +141,18 @@ body {
     background-color: #2980b9;
 }
 
+.btn-toggle {
+    background-color: #16a085;
+    color: white;
+    padding: 8px 15px;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+.btn-toggle:hover {
+    background-color: #138d75;
+}
+
 .today-stats {
     color: #bdc3c7;
     font-size: 1.1em;
@@ -482,7 +494,7 @@ body {
 
 
 .calendar-day.target-date {
-    background-color: #f39c12;
+    background-color: #9b59b6;
     color: white;
     animation: pulse 2s infinite;
 }
@@ -527,9 +539,7 @@ body {
 
 /* Gradient Legend Styles */
 .gradient-legend {
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
 }
 
 .legend-label {
@@ -541,9 +551,9 @@ body {
     width: 120px;
     height: 15px;
     background: linear-gradient(90deg,
-            hsl(120, 40%, 70%) 0%,
-            hsl(120, 55%, 52.5%) 50%,
-            hsl(120, 70%, 35%) 100%);
+            hsl(120, 40%, 85%) 0%,
+            hsl(120, 55%, 55%) 50%,
+            hsl(120, 70%, 25%) 100%);
     border-radius: 8px;
     position: relative;
     display: flex;
@@ -561,7 +571,7 @@ body {
 }
 
 .legend-color.target-date {
-    background-color: #f39c12;
+    background-color: #9b59b6;
 }
 
 /* Yearly Chart Styles */
@@ -634,7 +644,7 @@ body {
     width: 12px;
     height: 12px;
     border-radius: 2px;
-    background-color: #2c3e50 !important;
+    background-color: #2c3e50; /* Default - can be overridden by inline styles */
     cursor: pointer;
     transition: all 0.1s ease;
     border: 1px solid rgba(255, 255, 255, 0.3) !important;
@@ -659,65 +669,46 @@ body {
     background-color: #2c3e50 !important;
 }
 
-.yearly-chart-day.level-1 {
-    background-color: #39d353 !important; /* GitHub green level 1 */
+.yearly-chart-day.target-date {
+    background-color: #9b59b6 !important;
+    animation: pulse 2s infinite;
 }
 
-.yearly-chart-day.level-2 {
-    background-color: #26a641 !important; /* GitHub green level 2 */
-}
+/* Level classes removed - now using dynamic HSL colors */
 
-.yearly-chart-day.level-3 {
-    background-color: #006d32 !important; /* GitHub green level 3 */
-}
+/* Yearly chart legend styles removed - legend moved to bottom */
 
-.yearly-chart-day.level-4 {
-    background-color: #0d4429 !important; /* GitHub green level 4 */
-}
-
-.yearly-chart-legend {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 0.8em;
-    color: #95a5a6;
-}
-
-.legend-text {
-    color: #95a5a6;
-}
-
-.contribution-levels {
-    display: flex;
-    gap: 2px;
-}
-
-.contribution-levels > div {
+/* Dynamic legend color classes */
+.legend-level-1 {
+    background-color: hsl(120, 40%, 85%) !important;
     width: 10px;
     height: 10px;
     border-radius: 2px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.contribution-levels .level-0 {
-    background-color: #2c3e50 !important;
+.legend-level-2 {
+    background-color: hsl(120, 55%, 55%) !important;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.contribution-levels .level-1 {
-    background-color: #39d353 !important;
+.legend-level-3 {
+    background-color: hsl(120, 70%, 40%) !important;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.contribution-levels .level-2 {
-    background-color: #26a641 !important;
-}
-
-.contribution-levels .level-3 {
-    background-color: #006d32 !important;
-}
-
-.contribution-levels .level-4 {
-    background-color: #0d4429 !important;
+.legend-level-4 {
+    background-color: hsl(120, 70%, 25%) !important;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Tooltip for yearly chart */
@@ -1114,14 +1105,14 @@ body {
 
     /* Yearly Chart Mobile */
     .yearly-chart-grid {
-        grid-template-columns: repeat(53, 10px);
-        grid-template-rows: repeat(7, 10px);
-        gap: 1px;
+        grid-template-columns: repeat(53, 10px) !important;
+        grid-template-rows: repeat(7, 10px) !important;
+        gap: 1px !important;
     }
 
     .yearly-chart-day {
-        width: 10px;
-        height: 10px;
+        width: 10px !important;
+        height: 10px !important;
     }
 
     .yearly-chart-months {
@@ -1205,15 +1196,15 @@ body {
 
     /* Yearly Chart Smallest Mobile */
     .yearly-chart-grid {
-        grid-template-columns: repeat(53, 8px);
-        grid-template-rows: repeat(7, 8px);
-        gap: 1px;
+        grid-template-columns: repeat(53, 8px) !important;
+        grid-template-rows: repeat(7, 8px) !important;
+        gap: 1px !important;
         margin-left: 12px;
     }
 
     .yearly-chart-day {
-        width: 8px;
-        height: 8px;
+        width: 8px !important;
+        height: 8px !important;
     }
 
     .yearly-chart-months {
@@ -1230,13 +1221,5 @@ body {
         padding-top: 15px;
     }
 
-    .yearly-chart-legend {
-        font-size: 0.7em;
-        gap: 6px;
-    }
-
-    .contribution-levels > div {
-        width: 8px;
-        height: 8px;
-    }
+    /* Yearly chart legend mobile styles removed */
 }

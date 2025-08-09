@@ -112,20 +112,6 @@
                     <!-- Calendar will be populated by JavaScript -->
                 </div>
 
-                <div class="calendar-legend">
-                    <div class="legend-item gradient-legend">
-                        <span class="legend-label">Practice Intensity:</span>
-                        <div class="gradient-bar">
-                            <span class="gradient-start">1min</span>
-                            <span class="gradient-end">60min+</span>
-                        </div>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color target-date"></span>
-                        <span>Estimated Completion</span>
-                    </div>
-                </div>
-
                 <!-- Yearly Progress Chart -->
                 <div class="yearly-chart-section" data-darkreader-ignore>
                     <div class="yearly-chart-header">
@@ -141,18 +127,25 @@
                             <!-- Year grid will be populated by JavaScript -->
                         </div>
                     </div>
-                    <div class="yearly-chart-legend">
-                        <span class="legend-text">Less</span>
-                        <div class="contribution-levels">
-                            <div class="level-0" title="No practice"></div>
-                            <div class="level-1" title="1-15 minutes"></div>
-                            <div class="level-2" title="16-30 minutes"></div>
-                            <div class="level-3" title="31-45 minutes"></div>
-                            <div class="level-4" title="46+ minutes"></div>
+                </div>
+                
+                <!-- Legend moved to bottom -->
+                <div class="calendar-legend">
+                    <div class="legend-item gradient-legend">
+                        <div class="gradient-bar">
+                            <span class="gradient-start">1min</span>
+                            <span class="gradient-end">120min+</span>
                         </div>
-                        <span class="legend-text">More</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color target-date"></span>
+                        <span>Estimated Completion</span>
+                    </div>
+                    <div class="legend-item">
+                        <button id="colorScaleToggle" class="btn btn-toggle">Curved</button>
                     </div>
                 </div>
+            </div>
             </section>
         </div>
     </main>
