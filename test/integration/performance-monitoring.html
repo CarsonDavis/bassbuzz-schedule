@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Test - BassBuzz Practice Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .test-results { background: #2a2a2a; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #2980b9; }
+        .metric { margin: 10px 0; }
+        .metric strong { color: #3498db; }
+        .improvement { color: #2ecc71; font-weight: bold; }
+        .warning { color: #e74c3c; font-weight: bold; }
+        #app-container { display: none; }
+    </style>
+</head>
+<body>
+    <h1>BassBuzz Performance Test</h1>
+    
+    <div class="test-results">
+        <h3>Performance Metrics</h3>
+        <div id="performance-metrics"></div>
+        <button onclick="runPerformanceTest()">Run Performance Test</button>
+        <button onclick="runStressTest()">Run Stress Test (10 rapid updates)</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <!-- Hidden app container for testing -->
+    <div id="app-container">
+        <div id="calendarGrid"></div>
+        <div id="yearlyChartGrid"></div>
+        <div id="yearlyChartMonths"></div>
+        <div id="currentMonth"></div>
+        <div id="currentYear"></div>
+        <div id="timerDisplay"></div>
+        <div id="todayTotal"></div>
+        <div id="overallProgress"></div>
+        <div id="progressText"></div>
+        <div id="totalPracticeTime"></div>
+        <div id="avgSessionLength"></div>
+        <div id="lessonsPerDay"></div>
+        <div id="expectedCompletionOnePerDay"></div>
+        <div id="expectedCompletionLessonRate"></div>
+        <div id="expectedCompletionTimeRate"></div>
+        <div id="lessonRateLabel"></div>
+        <div id="timeRateLabel"></div>
+        <div id="modulesContainer"></div>
+        <div id="colorScaleToggle"></div>
+        <div id="prevMonth"></div>
+        <div id="nextMonth"></div>
+        <div id="prevYear"></div>
+        <div id="nextYear"></div>
+    </div>
+
+    <script src="../../script.js"></script>
+    <script>
+        let performanceData = [];
+        
+        // Performance measurement utilities
+        class PerformanceMeasurer {
+            constructor() {
+                this.measurements = [];
+                this.originalMethods = {};
+            }
+            
+            startMeasuring() {
+                // Hook into critical methods
+                this.hookMethod('renderCalendar');
+                this.hookMethod('renderYearlyChart');
+                this.hookMethod('updateCalendarCell');
+                this.hookMethod('updateYearlyChartCell');
+                this.hookMethod('scheduleRender');
+                this.hookMethod('calculateTargetDate');
+            }
+            
+            hookMethod(methodName) {
+                const tracker = window.tracker;
+                if (!tracker || !tracker[methodName]) return;
+                
+                const originalMethod = tracker[methodName].bind(tracker);
+                this.originalMethods[methodName] = originalMethod;
+                
+                tracker[methodName] = (...args) => {
+                    const start = performance.now();
+                    const elementsBeforeCount = document.querySelectorAll('*').length;
+                    
+                    const result = originalMethod(...args);
+                    
+                    const end = performance.now();
+                    const elementsAfterCount = document.querySelectorAll('*').length;
+                    
+                    this.measurements.push({
+                        method: methodName,
+                        duration: end - start,
+                        elementsCreated: elementsAfterCount - elementsBeforeCount,
+                        timestamp: Date.now()
+                    });
+                    
+                    return result;
+                };
+            }
+            
+            stopMeasuring() {
+                // Restore original methods
+                const tracker = window.tracker;
+                if (!tracker) return;
+                
+                Object.keys(this.originalMethods).forEach(methodName => {
+                    if (this.originalMethods[methodName]) {
+                        tracker[methodName] = this.originalMethods[methodName];
+                    }
+                });
+            }
+            
+            getResults() {
+                return {
+                    totalCalls: this.measurements.length,
+                    totalDuration: this.measurements.reduce((sum, m) => sum + m.duration, 0),
+                    totalElementsCreated: this.measurements.reduce((sum, m) => sum + m.elementsCreated, 0),
+                    averageDuration: this.measurements.length > 0 ? 
+                        this.measurements.reduce((sum, m) => sum + m.duration, 0) / this.measurements.length : 0,
+                    measurements: this.measurements.slice(),
+                    breakdown: this.getMethodBreakdown()
+                };
+            }
+            
+            getMethodBreakdown() {
+                const breakdown = {};
+                this.measurements.forEach(m => {
+                    if (!breakdown[m.method]) {
+                        breakdown[m.method] = {
+                            calls: 0,
+                            totalDuration: 0,
+                            totalElements: 0
+                        };
+                    }
+                    breakdown[m.method].calls++;
+                    breakdown[m.method].totalDuration += m.duration;
+                    breakdown[m.method].totalElements += m.elementsCreated;
+                });
+                return breakdown;
+            }
+            
+            reset() {
+                this.measurements = [];
+            }
+        }
+        
+        const measurer = new PerformanceMeasurer();
+        
+        // Initialize tracker when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.tracker) {
+                    console.log('Tracker initialized, ready for performance testing');
+                    measurer.startMeasuring();
+                } else {
+                    console.error('Tracker not found');
+                }
+            }, 1000);
+        });
+        
+        function runPerformanceTest() {
+            if (!window.tracker) {
+                alert('App not loaded yet, please wait and try again');
+                return;
+            }
+            
+            measurer.reset();
+            const start = performance.now();
+            
+            // Simulate typical user actions
+            console.log('Starting performance test...');
+            
+            // 1. Timer start/stop (practice session simulation)
+            window.tracker.startTimer();
+            setTimeout(() => {
+                window.tracker.pauseTimer(); // This triggers savePracticeSession cascade
+                
+                // 2. Lesson completion
+                setTimeout(() => {
+                    // Simulate checking a lesson
+                    const testKey = '1-Get Tuned and Ready to Play';
+                    window.tracker.progress.lessons[testKey] = true;
+                    window.tracker.saveProgress();
+                    window.tracker.updateOverallProgress();
+                    window.tracker.renderModules();
+                    window.tracker.calculateTargetDate();
+                    window.tracker.updateStatsDisplay();
+                    window.tracker.scheduleRender();
+                    
+                    // 3. Practice time edit simulation
+                    setTimeout(() => {
+                        const today = window.tracker.getLocalDateString();
+                        window.tracker.updatePracticeTime(today, 45); // 45 minutes
+                        
+                        setTimeout(() => {
+                            const end = performance.now();
+                            displayResults(measurer.getResults(), end - start);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 1000);
+        }
+        
+        function runStressTest() {
+            if (!window.tracker) {
+                alert('App not loaded yet, please wait and try again');
+                return;
+            }
+            
+            measurer.reset();
+            const start = performance.now();
+            
+            console.log('Starting stress test...');
+            
+            // Rapid practice time updates
+            const dates = [];
+            const today = new Date();
+            for (let i = 0; i < 10; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                dates.push(window.tracker.getLocalDateString(date));
+            }
+            
+            let counter = 0;
+            const interval = setInterval(() => {
+                if (counter >= dates.length) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        const end = performance.now();
+                        displayResults(measurer.getResults(), end - start, true);
+                    }, 200);
+                    return;
+                }
+                
+                // Rapid practice time updates
+                window.tracker.updatePracticeTime(dates[counter], Math.floor(Math.random() * 120) + 30);
+                counter++;
+            }, 50); // 50ms between updates
+        }
+        
+        function displayResults(results, totalTestTime, isStressTest = false) {
+            const container = document.getElementById('performance-metrics');
+            const testType = isStressTest ? 'Stress Test' : 'Performance Test';
+            
+            const html = `
+                <div class="metric">
+                    <h4>${testType} Results</h4>
+                    <strong>Total Test Time:</strong> ${totalTestTime.toFixed(2)}ms<br>
+                    <strong>Total Render Calls:</strong> ${results.totalCalls}<br>
+                    <strong>Total Render Duration:</strong> ${results.totalDuration.toFixed(2)}ms<br>
+                    <strong>Total DOM Elements Created:</strong> ${results.totalElementsCreated}<br>
+                    <strong>Average Render Duration:</strong> ${results.averageDuration.toFixed(2)}ms<br>
+                    <br>
+                    <strong>Method Breakdown:</strong><br>
+                    ${Object.entries(results.breakdown).map(([method, data]) => `
+                        <div style="margin-left: 20px;">
+                            <strong>${method}:</strong> ${data.calls} calls, 
+                            ${data.totalDuration.toFixed(2)}ms total, 
+                            ${data.totalElements} elements created
+                        </div>
+                    `).join('')}
+                </div>
+                <hr>
+            `;
+            
+            container.innerHTML = html + container.innerHTML;
+            
+            // Performance analysis
+            const analysis = analyzePerformance(results, isStressTest);
+            container.innerHTML = analysis + container.innerHTML;
+        }
+        
+        function analyzePerformance(results, isStressTest) {
+            const { breakdown } = results;
+            let analysis = '<div class="metric"><h4>Performance Analysis</h4>';
+            
+            // Check if optimizations are working
+            const calendarCalls = breakdown.renderCalendar ? breakdown.renderCalendar.calls : 0;
+            const yearlyCalls = breakdown.renderYearlyChart ? breakdown.renderYearlyChart.calls : 0;
+            const selectiveCalendarCalls = breakdown.updateCalendarCell ? breakdown.updateCalendarCell.calls : 0;
+            const selectiveYearlyCalls = breakdown.updateYearlyChartCell ? breakdown.updateYearlyChartCell.calls : 0;
+            const scheduledRenders = breakdown.scheduleRender ? breakdown.scheduleRender.calls : 0;
+            
+            if (selectiveCalendarCalls > 0 || selectiveYearlyCalls > 0) {
+                analysis += '<span class="improvement">✓ Selective Updates Working!</span><br>';
+                analysis += `Selective calendar updates: ${selectiveCalendarCalls}<br>`;
+                analysis += `Selective yearly updates: ${selectiveYearlyCalls}<br>`;
+            }
+            
+            if (scheduledRenders > 0) {
+                analysis += '<span class="improvement">✓ Render Debouncing Working!</span><br>';
+                analysis += `Scheduled renders: ${scheduledRenders}<br>`;
+            }
+            
+            if (calendarCalls > (isStressTest ? 5 : 2)) {
+                analysis += '<span class="warning">⚠ Too many full calendar renders</span><br>';
+                analysis += `Full calendar renders: ${calendarCalls}<br>`;
+            }
+            
+            if (yearlyCalls > (isStressTest ? 5 : 2)) {
+                analysis += '<span class="warning">⚠ Too many full yearly chart renders</span><br>';
+                analysis += `Full yearly renders: ${yearlyCalls}<br>`;
+            }
+            
+            // DOM efficiency check
+            const avgElementsPerCall = results.totalElementsCreated / results.totalCalls;
+            if (avgElementsPerCall < 50) {
+                analysis += '<span class="improvement">✓ Efficient DOM Usage!</span><br>';
+                analysis += `Average elements per render: ${avgElementsPerCall.toFixed(1)}<br>`;
+            } else {
+                analysis += '<span class="warning">⚠ High DOM manipulation</span><br>';
+                analysis += `Average elements per render: ${avgElementsPerCall.toFixed(1)}<br>`;
+            }
+            
+            analysis += '</div><hr>';
+            return analysis;
+        }
+        
+        function clearResults() {
+            document.getElementById('performance-metrics').innerHTML = '';
+        }
+        
+        // Auto-run a basic test when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.tracker) {
+                    console.log('Running initial performance check...');
+                    // Just measure initial render
+                    setTimeout(() => {
+                        const results = measurer.getResults();
+                        if (results.totalCalls > 0) {
+                            displayResults(results, 0);
+                        }
+                    }, 2000);
+                }
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

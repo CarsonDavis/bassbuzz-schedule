@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lessons Per Day Calculation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .test-section { background: #2a2a2a; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #2980b9; }
+        .result { margin: 10px 0; }
+        .correct { color: #2ecc71; font-weight: bold; }
+        .incorrect { color: #e74c3c; font-weight: bold; }
+        .warning { color: #f39c12; font-weight: bold; }
+        .test-case { background: #333; padding: 15px; margin: 10px 0; border-left: 4px solid #3498db; }
+        .expected { color: #3498db; }
+        .actual { color: #e67e22; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #555; padding: 8px; text-align: left; }
+        th { background: #444; }
+    </style>
+</head>
+<body>
+    <h1>Lessons Per Day Calculation Test</h1>
+    
+    <div class="test-section">
+        <h3>Current App Calculation Test</h3>
+        <p>Test the actual app's lessons per day calculation with various scenarios</p>
+        <button onclick="testCurrentAppCalculation()">Test Current App</button>
+        <button onclick="runAllTests()">Run All Test Cases</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="app-test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Manual Test Cases</h3>
+        <p>Test various scenarios to identify calculation bugs</p>
+        <div id="manual-test-results"></div>
+    </div>
+
+    <!-- Hidden app elements -->
+    <div style="display: none;">
+        <div id="calendarGrid"></div>
+        <div id="yearlyChartGrid"></div>
+        <div id="yearlyChartMonths"></div>
+        <div id="currentMonth"></div>
+        <div id="currentYear"></div>
+        <div id="timerDisplay"></div>
+        <div id="todayTotal"></div>
+        <div id="overallProgress"></div>
+        <div id="progressText"></div>
+        <div id="totalPracticeTime"></div>
+        <div id="avgSessionLength"></div>
+        <div id="lessonsPerDay"></div>
+        <div id="expectedCompletionOnePerDay"></div>
+        <div id="expectedCompletionLessonRate"></div>
+        <div id="expectedCompletionTimeRate"></div>
+        <div id="lessonRateLabel"></div>
+        <div id="timeRateLabel"></div>
+        <div id="modulesContainer"></div>
+        <div id="colorScaleToggle"></div>
+        <div id="prevMonth"></div>
+        <div id="nextMonth"></div>
+        <div id="prevYear"></div>
+        <div id="nextYear"></div>
+    </div>
+
+    <script src="../../script.js"></script>
+    <script>
+        // Test cases with expected results
+        const testCases = [
+            {
+                name: "Basic Test: 10 lessons in 5 days",
+                startDate: "2025-01-01",
+                currentDate: "2025-01-06", // 5 days later
+                completedLessons: 10,
+                expectedLessonsPerDay: 2.0,
+                description: "Simple case: 10 lessons / 5 days = 2.0 lessons/day"
+            },
+            {
+                name: "Single Day Test: 3 lessons on day 1", 
+                startDate: "2025-01-01",
+                currentDate: "2025-01-02", // 1 day later
+                completedLessons: 3,
+                expectedLessonsPerDay: 3.0,
+                description: "Edge case: 3 lessons / 1 day = 3.0 lessons/day"
+            },
+            {
+                name: "Same Day Test: 5 lessons on start date",
+                startDate: "2025-01-01", 
+                currentDate: "2025-01-01", // Same day
+                completedLessons: 5,
+                expectedLessonsPerDay: 5.0, // Should this be 5.0 or undefined?
+                description: "Edge case: lessons completed on the same day as start"
+            },
+            {
+                name: "Fractional Rate: 1 lesson in 3 days",
+                startDate: "2025-01-01",
+                currentDate: "2025-01-04", // 3 days later
+                completedLessons: 1,
+                expectedLessonsPerDay: 0.33,
+                description: "Low rate: 1 lesson / 3 days = 0.33 lessons/day"
+            },
+            {
+                name: "Long Duration: 50 lessons in 25 days",
+                startDate: "2025-01-01",
+                currentDate: "2025-01-26", // 25 days later
+                completedLessons: 50,
+                expectedLessonsPerDay: 2.0,
+                description: "Longer period: 50 lessons / 25 days = 2.0 lessons/day"
+            },
+            {
+                name: "Zero Lessons Test",
+                startDate: "2025-01-01",
+                currentDate: "2025-01-10", // 9 days later
+                completedLessons: 0,
+                expectedLessonsPerDay: 0.0,
+                description: "No progress: 0 lessons / 9 days = 0.0 lessons/day"
+            },
+            {
+                name: "Recent Start: 2 lessons in 1.5 days",
+                startDate: "2025-01-01",
+                currentDate: "2025-01-02T12:00:00", // 1.5 days later
+                completedLessons: 2,
+                expectedLessonsPerDay: 1.33, // 2 lessons / 1.5 days, but Math.ceil makes it 2 days
+                description: "Fractional days - app uses Math.ceil so 1.5 days becomes 2 days"
+            }
+        ];
+
+        function calculateExpectedLessonsPerDay(startDate, currentDate, completedLessons) {
+            if (completedLessons === 0) return 0;
+            
+            const start = new Date(startDate);
+            const current = new Date(currentDate);
+            
+            // This is how the app calculates it - let's see if it's correct
+            const daysSinceStart = Math.ceil((current - start) / (1000 * 60 * 60 * 24));
+            
+            console.log(`Calculating: ${completedLessons} lessons / ${daysSinceStart} days`);
+            console.log(`Start: ${start}, Current: ${current}`);
+            console.log(`Time diff: ${(current - start) / (1000 * 60 * 60 * 24)} days`);
+            console.log(`Math.ceil of time diff: ${daysSinceStart} days`);
+            
+            if (daysSinceStart <= 0) return 0;
+            
+            return completedLessons / daysSinceStart;
+        }
+
+        function testCurrentAppCalculation() {
+            if (!window.tracker) {
+                document.getElementById('app-test-results').innerHTML = 
+                    '<div class="incorrect">App not loaded yet. Please wait and try again.</div>';
+                return;
+            }
+
+            const results = document.getElementById('app-test-results');
+            let html = '<h4>Current App State Test</h4>';
+
+            // Get current app state
+            const completedLessons = Object.values(window.tracker.progress.lessons).filter(Boolean).length;
+            const courseStartDate = window.tracker.progress.courseStartDate;
+            const appCalculatedRate = window.tracker.calculateLessonsPerDay();
+
+            html += `<table>
+                <tr><th>Property</th><th>Value</th></tr>
+                <tr><td>Completed Lessons</td><td>${completedLessons}</td></tr>
+                <tr><td>Course Start Date</td><td>${courseStartDate || 'Not set'}</td></tr>
+                <tr><td>App Calculated Rate</td><td class="actual">${appCalculatedRate.toFixed(4)} lessons/day</td></tr>
+            </table>`;
+
+            if (courseStartDate && completedLessons > 0) {
+                // Manual calculation
+                const startDate = new Date(courseStartDate);
+                const today = new Date();
+                const daysSinceStart = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
+                const manualRate = completedLessons / daysSinceStart;
+
+                html += `<h5>Verification:</h5>`;
+                html += `<table>
+                    <tr><th>Calculation Step</th><th>Value</th></tr>
+                    <tr><td>Start Date</td><td>${startDate.toDateString()}</td></tr>
+                    <tr><td>Today</td><td>${today.toDateString()}</td></tr>
+                    <tr><td>Raw Days Difference</td><td>${((today - startDate) / (1000 * 60 * 60 * 24)).toFixed(2)}</td></tr>
+                    <tr><td>Math.ceil(Days)</td><td>${daysSinceStart}</td></tr>
+                    <tr><td>Manual Calculation</td><td class="expected">${manualRate.toFixed(4)} lessons/day</td></tr>
+                    <tr><td>App Calculation</td><td class="actual">${appCalculatedRate.toFixed(4)} lessons/day</td></tr>
+                    <tr><td>Match?</td><td class="${Math.abs(manualRate - appCalculatedRate) < 0.0001 ? 'correct' : 'incorrect'}">
+                        ${Math.abs(manualRate - appCalculatedRate) < 0.0001 ? '✓ MATCH' : '✗ MISMATCH'}
+                    </td></tr>
+                </table>`;
+            }
+
+            results.innerHTML = html;
+        }
+
+        function runAllTests() {
+            let html = '<h4>Test Case Results</h4>';
+
+            testCases.forEach((testCase, index) => {
+                const calculated = calculateExpectedLessonsPerDay(
+                    testCase.startDate, 
+                    testCase.currentDate, 
+                    testCase.completedLessons
+                );
+
+                const isCorrect = Math.abs(calculated - testCase.expectedLessonsPerDay) < 0.01;
+                const statusClass = isCorrect ? 'correct' : 'incorrect';
+                const statusText = isCorrect ? '✓ PASS' : '✗ FAIL';
+
+                html += `
+                    <div class="test-case">
+                        <h5>${testCase.name} <span class="${statusClass}">${statusText}</span></h5>
+                        <p>${testCase.description}</p>
+                        <table>
+                            <tr><th>Parameter</th><th>Value</th></tr>
+                            <tr><td>Start Date</td><td>${testCase.startDate}</td></tr>
+                            <tr><td>Current Date</td><td>${testCase.currentDate}</td></tr>
+                            <tr><td>Completed Lessons</td><td>${testCase.completedLessons}</td></tr>
+                            <tr><td>Expected Rate</td><td class="expected">${testCase.expectedLessonsPerDay.toFixed(2)} lessons/day</td></tr>
+                            <tr><td>Calculated Rate</td><td class="actual">${calculated.toFixed(2)} lessons/day</td></tr>
+                            <tr><td>Difference</td><td>${Math.abs(calculated - testCase.expectedLessonsPerDay).toFixed(4)}</td></tr>
+                        </table>
+                    </div>
+                `;
+            });
+
+            // Summary
+            const passedTests = testCases.filter((testCase, index) => {
+                const calculated = calculateExpectedLessonsPerDay(
+                    testCase.startDate, 
+                    testCase.currentDate, 
+                    testCase.completedLessons
+                );
+                return Math.abs(calculated - testCase.expectedLessonsPerDay) < 0.01;
+            }).length;
+
+            html = `
+                <div class="result">
+                    <h4>Test Summary: ${passedTests}/${testCases.length} tests passed</h4>
+                    ${passedTests === testCases.length ? 
+                        '<div class="correct">✓ All tests passed!</div>' : 
+                        '<div class="incorrect">✗ Some tests failed - calculation may be incorrect</div>'
+                    }
+                </div>
+            ` + html;
+
+            document.getElementById('manual-test-results').innerHTML = html;
+        }
+
+        function clearResults() {
+            document.getElementById('app-test-results').innerHTML = '';
+            document.getElementById('manual-test-results').innerHTML = '';
+        }
+
+        // Identify potential issues
+        function analyzeCalculationIssues() {
+            console.log("=== POTENTIAL ISSUES WITH LESSONS PER DAY CALCULATION ===");
+            console.log("1. Math.ceil() usage: This rounds UP partial days, which could skew the rate");
+            console.log("   - If you completed lessons in 1.1 days, it counts as 2 days");
+            console.log("   - This makes your rate appear lower than it actually is");
+            console.log("2. Same-day calculation: What happens if start date = current date?");
+            console.log("   - Math.ceil((same_date - same_date) / day_ms) = Math.ceil(0) = 0");
+            console.log("   - This would cause division by zero or return 0 incorrectly");
+            console.log("3. Time zone issues: Date calculations without time zones can be inconsistent");
+            console.log("4. Course start date source: How is courseStartDate determined?");
+        }
+
+        // Auto-run analysis when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                analyzeCalculationIssues();
+                if (window.tracker) {
+                    console.log('Tracker loaded - ready for testing');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

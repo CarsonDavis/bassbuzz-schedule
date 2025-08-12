@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rapid Click Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        button { padding: 10px 20px; margin: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .test-results { background: #2a2a2a; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .status { font-weight: bold; color: #2ecc71; }
+        .warning { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <h1>Rapid Lesson Clicking Test</h1>
+    
+    <div class="test-results">
+        <h3>Test: Click 20 lessons rapidly</h3>
+        <p>This test simulates clicking many lesson checkboxes in quick succession to verify the batching optimization works.</p>
+        <button onclick="runRapidClickTest()">Run Rapid Click Test</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="test-results"></div>
+    </div>
+
+    <!-- Hidden app elements for testing -->
+    <div style="display: none;">
+        <div id="calendarGrid"></div>
+        <div id="yearlyChartGrid"></div>
+        <div id="yearlyChartMonths"></div>
+        <div id="currentMonth"></div>
+        <div id="currentYear"></div>
+        <div id="timerDisplay"></div>
+        <div id="todayTotal"></div>
+        <div id="overallProgress"></div>
+        <div id="progressText"></div>
+        <div id="totalPracticeTime"></div>
+        <div id="avgSessionLength"></div>
+        <div id="lessonsPerDay"></div>
+        <div id="expectedCompletionOnePerDay"></div>
+        <div id="expectedCompletionLessonRate"></div>
+        <div id="expectedCompletionTimeRate"></div>
+        <div id="lessonRateLabel"></div>
+        <div id="timeRateLabel"></div>
+        <div id="modulesContainer"></div>
+        <div id="colorScaleToggle"></div>
+        <div id="prevMonth"></div>
+        <div id="nextMonth"></div>
+        <div id="prevYear"></div>
+        <div id="nextYear"></div>
+    </div>
+
+    <script src="../../script.js"></script>
+    <script>
+        let testResults = [];
+        let performanceData = [];
+        
+        // Hook into the expensive operations to track them
+        function hookPerformanceTracking() {
+            if (!window.tracker) return false;
+            
+            const originalSaveProgress = window.tracker.saveProgress.bind(window.tracker);
+            const originalRenderModules = window.tracker.renderModules.bind(window.tracker);
+            const originalRenderCalendar = window.tracker.renderCalendar.bind(window.tracker);
+            const originalRenderYearlyChart = window.tracker.renderYearlyChart.bind(window.tracker);
+            
+            window.tracker.saveProgress = function() {
+                const start = performance.now();
+                const result = originalSaveProgress();
+                const end = performance.now();
+                performanceData.push({ operation: 'saveProgress', duration: end - start, timestamp: Date.now() });
+                return result;
+            };
+            
+            window.tracker.renderModules = function() {
+                const start = performance.now();
+                const result = originalRenderModules();
+                const end = performance.now();
+                performanceData.push({ operation: 'renderModules', duration: end - start, timestamp: Date.now() });
+                return result;
+            };
+            
+            window.tracker.renderCalendar = function() {
+                const start = performance.now();
+                const result = originalRenderCalendar();
+                const end = performance.now();
+                performanceData.push({ operation: 'renderCalendar', duration: end - start, timestamp: Date.now() });
+                return result;
+            };
+            
+            window.tracker.renderYearlyChart = function() {
+                const start = performance.now();
+                const result = originalRenderYearlyChart();
+                const end = performance.now();
+                performanceData.push({ operation: 'renderYearlyChart', duration: end - start, timestamp: Date.now() });
+                return result;
+            };
+            
+            return true;
+        }
+        
+        function runRapidClickTest() {
+            if (!window.tracker) {
+                alert('App not loaded yet, please wait and try again');
+                return;
+            }
+            
+            if (!hookPerformanceTracking()) {
+                alert('Failed to set up performance tracking');
+                return;
+            }
+            
+            // Reset performance data
+            performanceData = [];
+            
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<div class="status">Running rapid click test...</div>';
+            
+            const startTime = performance.now();
+            
+            // Find all lesson checkboxes in the actual modules
+            const checkboxes = document.querySelectorAll('.lesson-checkbox');
+            if (checkboxes.length === 0) {
+                resultsDiv.innerHTML = '<div class="warning">No lesson checkboxes found. Make sure the app has loaded.</div>';
+                return;
+            }
+            
+            // Click up to 20 checkboxes rapidly (10ms apart)
+            const maxClicks = Math.min(20, checkboxes.length);
+            let clickCount = 0;
+            
+            const clickInterval = setInterval(() => {
+                if (clickCount >= maxClicks) {
+                    clearInterval(clickInterval);
+                    
+                    // Wait a bit for all batched operations to complete
+                    setTimeout(() => {
+                        const endTime = performance.now();
+                        displayTestResults(startTime, endTime, clickCount, performanceData);
+                    }, 500); // Wait 500ms for all operations to complete
+                    
+                    return;
+                }
+                
+                // Click the checkbox
+                const checkbox = checkboxes[clickCount];
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                clickCount++;
+            }, 10); // 10ms between clicks (very rapid)
+        }
+        
+        function displayTestResults(startTime, endTime, clickCount, perfData) {
+            const totalDuration = endTime - startTime;
+            
+            // Analyze performance data
+            const operationCounts = {};
+            const operationDurations = {};
+            
+            perfData.forEach(data => {
+                operationCounts[data.operation] = (operationCounts[data.operation] || 0) + 1;
+                operationDurations[data.operation] = (operationDurations[data.operation] || 0) + data.duration;
+            });
+            
+            const resultsDiv = document.getElementById('test-results');
+            
+            let html = `
+                <h4>Test Results</h4>
+                <div><strong>Checkboxes clicked:</strong> ${clickCount}</div>
+                <div><strong>Total test duration:</strong> ${totalDuration.toFixed(2)}ms</div>
+                <div><strong>Total operations tracked:</strong> ${perfData.length}</div>
+                <br>
+                <h5>Operation Breakdown:</h5>
+            `;
+            
+            Object.keys(operationCounts).forEach(operation => {
+                const count = operationCounts[operation];
+                const duration = operationDurations[operation];
+                const avgDuration = duration / count;
+                
+                html += `
+                    <div style="margin-left: 20px;">
+                        <strong>${operation}:</strong> ${count} calls, 
+                        ${duration.toFixed(2)}ms total, 
+                        ${avgDuration.toFixed(2)}ms average
+                    </div>
+                `;
+            });
+            
+            // Analysis
+            html += '<br><h5>Analysis:</h5>';
+            
+            const renderModuleCalls = operationCounts.renderModules || 0;
+            const renderCalendarCalls = operationCounts.renderCalendar || 0;
+            const renderYearlyChartCalls = operationCounts.renderYearlyChart || 0;
+            
+            if (renderModuleCalls <= 5) {
+                html += '<div class="status">✓ Module rendering properly batched! (5 or fewer calls for ' + clickCount + ' clicks)</div>';
+            } else {
+                html += '<div class="warning">⚠ Module rendering not well batched (' + renderModuleCalls + ' calls for ' + clickCount + ' clicks)</div>';
+            }
+            
+            if (renderCalendarCalls <= 3) {
+                html += '<div class="status">✓ Calendar rendering properly batched! (3 or fewer calls)</div>';
+            } else {
+                html += '<div class="warning">⚠ Calendar rendering not well batched (' + renderCalendarCalls + ' calls)</div>';
+            }
+            
+            if (renderYearlyChartCalls <= 3) {
+                html += '<div class="status">✓ Yearly chart rendering properly batched! (3 or fewer calls)</div>';
+            } else {
+                html += '<div class="warning">⚠ Yearly chart rendering not well batched (' + renderYearlyChartCalls + ' calls)</div>';
+            }
+            
+            const responsiveness = totalDuration / clickCount;
+            if (responsiveness < 50) {
+                html += '<div class="status">✓ Excellent responsiveness! (' + responsiveness.toFixed(1) + 'ms per click)</div>';
+            } else if (responsiveness < 100) {
+                html += '<div>Good responsiveness (' + responsiveness.toFixed(1) + 'ms per click)</div>';
+            } else {
+                html += '<div class="warning">⚠ Slow responsiveness (' + responsiveness.toFixed(1) + 'ms per click)</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+        }
+        
+        // Auto-setup when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.tracker) {
+                    console.log('BassBuzz tracker loaded, ready for rapid click testing');
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

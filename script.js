@@ -24,6 +24,11 @@ class BassPracticeTracker {
         // Color scaling preference
         this.linearColorScale = false;
         
+        // Performance optimization state
+        this.renderTimeout = null;
+        this.lastTargetInputs = null;
+        this.lessonUpdateTimeout = null;
+        
         this.init();
     }
 
@@ -233,8 +238,10 @@ class BassPracticeTracker {
             this.updateTodayStats();
             this.calculateTargetDate(); // Calculate target date before rendering
             this.updateStatsDisplay();
-            this.renderCalendar();
-            this.renderYearlyChart();
+            
+            // Use selective updates instead of full re-renders
+            this.updateCalendarCell(today);
+            this.updateYearlyChartCell(today);
         }
     }
 
@@ -301,18 +308,19 @@ class BassPracticeTracker {
                 
                 this.progress.lessons[key] = e.target.checked;
                 
+                // Immediate visual feedback - update lesson item styling
+                const lessonItem = e.target.closest('.lesson-item');
+                if (lessonItem) {
+                    lessonItem.classList.toggle('completed', e.target.checked);
+                }
+                
                 // Set course start date when first lesson is completed (if no practice dates exist)
                 if (e.target.checked && !this.progress.courseStartDate) {
                     this.setCourseStartDate();
                 }
                 
-                this.saveProgress();
-                this.updateOverallProgress();
-                this.renderModules();
-                this.calculateTargetDate();
-                this.updateStatsDisplay();
-                this.renderCalendar();
-                this.renderYearlyChart();
+                // Batch all expensive operations to handle rapid clicking
+                this.scheduleLessonUpdate();
             }
         });
 
@@ -333,6 +341,94 @@ class BassPracticeTracker {
 
         document.getElementById('overallProgress').style.width = `${percentage}%`;
         document.getElementById('progressText').textContent = `${completedLessons} / ${totalLessons} lessons completed`;
+    }
+
+    // Selective calendar update methods
+    scheduleRender() {
+        if (this.renderTimeout) return; // Already scheduled
+        
+        this.renderTimeout = setTimeout(() => {
+            this.renderCalendar();
+            this.renderYearlyChart();
+            this.renderTimeout = null;
+        }, 50); // 50ms debounce
+    }
+
+    scheduleLessonUpdate() {
+        if (this.lessonUpdateTimeout) return; // Already scheduled
+        
+        this.lessonUpdateTimeout = setTimeout(() => {
+            // Batch all the expensive operations
+            this.saveProgress();
+            this.updateOverallProgress();
+            this.renderModules();
+            this.calculateTargetDate();
+            this.updateStatsDisplay();
+            this.scheduleRender(); // This will also be debounced
+            this.lessonUpdateTimeout = null;
+        }, 100); // 100ms debounce for lesson updates (longer than render debounce)
+    }
+
+    updateCalendarCell(dateStr) {
+        const cell = document.querySelector(`#calendarGrid [data-date="${dateStr}"]`);
+        if (!cell) {
+            // Cell not visible in current month view, trigger full render
+            this.renderCalendar();
+            return;
+        }
+        
+        const practiceTime = this.progress.practiceLog[dateStr] || 0;
+        const practiceMinutes = Math.floor(practiceTime / 60);
+        
+        // Update practice minutes display
+        const minutesSpan = cell.querySelector('.practice-minutes');
+        if (practiceMinutes > 0) {
+            if (!minutesSpan) {
+                cell.insertAdjacentHTML('beforeend', `<span class="practice-minutes">${practiceMinutes}m</span>`);
+            } else {
+                minutesSpan.textContent = `${practiceMinutes}m`;
+            }
+        } else if (minutesSpan) {
+            minutesSpan.remove();
+        }
+        
+        // Update background color
+        const practiceColor = this.getPracticeColor(practiceMinutes);
+        cell.style.backgroundColor = practiceColor || '';
+        cell.style.color = practiceColor ? 'white' : '';
+        
+        // Update target date highlighting
+        cell.classList.toggle('target-date', dateStr === this.targetDate);
+    }
+
+    updateYearlyChartCell(dateStr) {
+        const cell = document.querySelector(`#yearlyChartGrid [data-date="${dateStr}"]`);
+        if (!cell) {
+            // Cell not visible in current year view, trigger full render
+            this.renderYearlyChart();
+            return;
+        }
+        
+        const practiceTime = this.progress.practiceLog[dateStr] || 0;
+        const practiceMinutes = Math.floor(practiceTime / 60);
+        
+        // Update background color
+        const practiceColor = this.getPracticeColor(practiceMinutes);
+        if (practiceColor) {
+            cell.style.backgroundColor = practiceColor;
+            cell.classList.remove('level-0');
+        } else {
+            cell.style.backgroundColor = '';
+            cell.classList.add('level-0');
+        }
+        
+        // Update target date highlighting
+        if (this.targetDate && dateStr === this.targetDate) {
+            cell.classList.add('target-date');
+            cell.style.backgroundColor = '#9b59b6';
+        } else {
+            cell.classList.remove('target-date');
+        }
     }
 
     renderCalendar() {
@@ -387,6 +483,7 @@ class BassPracticeTracker {
             dayDiv.className = 'calendar-day';
             
             const dateStr = this.getLocalDateString(date);
+            dayDiv.dataset.date = dateStr;
             const isCurrentMonth = date.getMonth() === this.currentMonth;
             const isToday = dateStr === this.getLocalDateString();
             const practiceTime = this.progress.practiceLog[dateStr] || 0;
@@ -601,7 +698,21 @@ class BassPracticeTracker {
     }
 
     calculateTargetDate() {
+        // Only recalculate if inputs actually changed
+        const currentInputs = JSON.stringify({
+            lessons: this.progress.lessons,
+            practiceLog: Object.keys(this.progress.practiceLog).length,
+            startDate: this.progress.courseStartDate,
+            totalPracticeTime: this.progress.totalPracticeTime
+        });
+        
+        if (this.lastTargetInputs === currentInputs) {
+            return; // No changes, skip calculation
+        }
+        
         console.log('=== CALCULATING TARGET DATE ===');
+        this.lastTargetInputs = currentInputs;
+        
         // Calculate all three target dates
         this.targetDates = {
             onePerDay: this.calculateOnePerDayTarget(),
@@ -673,16 +784,22 @@ class BassPracticeTracker {
         // Calculate lessons per day based on actual progress
         const startDate = new Date(this.progress.courseStartDate);
         const today = new Date();
-        const daysSinceStart = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
+        const daysSinceStart = (today - startDate) / (1000 * 60 * 60 * 24);
         
         console.log('Start date:', startDate);
         console.log('Today:', today);
         console.log('Days since start:', daysSinceStart);
         
-        // Avoid division by zero
-        if (daysSinceStart <= 0) {
-            console.log('Days since start <= 0 - returning null');
-            return null;
+        // Avoid division by zero and handle same-day start
+        if (daysSinceStart < 1.0) {
+            console.log('Within first day - using current rate for projection');
+            // For target date calculation, use current rate but don't be overly optimistic
+            const currentRate = completedLessons / Math.max(daysSinceStart, 0.1);
+            const daysToComplete = Math.ceil(remainingLessons / Math.max(currentRate, 1/30));
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + daysToComplete);
+            console.log('First-day target calculation - rate:', currentRate, 'days to complete:', daysToComplete);
+            return this.getLocalDateString(targetDate);
         }
 
         const lessonsPerDay = completedLessons / daysSinceStart;
@@ -916,8 +1033,10 @@ class BassPracticeTracker {
         this.updateTodayStats();
         this.calculateTargetDate(); // Calculate target date before rendering
         this.updateStatsDisplay();
-        this.renderCalendar();
-        this.renderYearlyChart();
+        
+        // Use debounced full render to ensure both calendars update
+        // (selective updates can miss when target date changes or cells aren't visible)
+        this.scheduleRender();
     }
 
     getPracticeColor(minutes) {
@@ -950,9 +1069,8 @@ class BassPracticeTracker {
         const toggleButton = document.getElementById('colorScaleToggle');
         toggleButton.textContent = this.linearColorScale ? 'Linear' : 'Curved';
         
-        // Refresh both calendars
-        this.renderCalendar();
-        this.renderYearlyChart();
+        // Refresh both calendars - color scale changes require full re-render
+        this.scheduleRender();
     }
 
     // Helper function to get local date in YYYY-MM-DD format
@@ -1013,10 +1131,15 @@ class BassPracticeTracker {
         
         const startDate = new Date(this.progress.courseStartDate);
         const today = new Date();
-        const daysSinceStart = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
         
-        if (daysSinceStart <= 0) {
-            return 0;
+        // Use actual fractional days, not rounded up days
+        const daysSinceStart = (today - startDate) / (1000 * 60 * 60 * 24);
+        
+        // Handle same-day and very recent starts properly
+        if (daysSinceStart < 1.0) {
+            // If less than a full day, show the rate they're achieving today
+            // This gives new users an encouraging but realistic rate
+            return completedLessons / Math.max(daysSinceStart, 0.1);
         }
         
         return completedLessons / daysSinceStart;
@@ -1478,8 +1601,9 @@ class BassPracticeTracker {
                 this.updateTodayStats();
                 this.calculateTargetDate();
                 this.updateStatsDisplay();
-                this.renderCalendar();
-                this.renderYearlyChart();
+                
+                // Use debounced render for calendars after data merge
+                this.scheduleRender();
                 
                 // If we had pending changes, sync them back to cloud
                 if (this.progress.pendingSync) {
