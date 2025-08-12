@@ -283,6 +283,11 @@ class BassPracticeTracker {
                     <div class="module-progress">${completedLessons}/${module.lessons.length}</div>
                 </div>
                 <div class="module-content ${isOpen ? 'active' : ''}">
+                    <div class="lesson-item select-all-item">
+                        <input type="checkbox" class="select-all-checkbox" 
+                               data-module="${module.id}">
+                        <span class="lesson-name select-all-label">Select All</span>
+                    </div>
                     ${module.lessons.map(lesson => `
                         <div class="lesson-item ${this.progress.lessons[`${module.id}-${lesson}`] ? 'completed' : ''}">
                             <input type="checkbox" class="lesson-checkbox" 
@@ -303,24 +308,34 @@ class BassPracticeTracker {
             if (e.target.type === 'checkbox') {
                 e.stopPropagation(); // Prevent module from closing
                 const moduleId = e.target.dataset.module;
-                const lessonName = e.target.dataset.lesson;
-                const key = `${moduleId}-${lessonName}`;
                 
-                this.progress.lessons[key] = e.target.checked;
-                
-                // Immediate visual feedback - update lesson item styling
-                const lessonItem = e.target.closest('.lesson-item');
-                if (lessonItem) {
-                    lessonItem.classList.toggle('completed', e.target.checked);
+                if (e.target.classList.contains('select-all-checkbox')) {
+                    // Handle select all checkbox
+                    this.handleSelectAll(moduleId, e.target.checked);
+                } else {
+                    // Handle individual lesson checkbox
+                    const lessonName = e.target.dataset.lesson;
+                    const key = `${moduleId}-${lessonName}`;
+                    
+                    this.progress.lessons[key] = e.target.checked;
+                    
+                    // Immediate visual feedback - update lesson item styling
+                    const lessonItem = e.target.closest('.lesson-item');
+                    if (lessonItem) {
+                        lessonItem.classList.toggle('completed', e.target.checked);
+                    }
+                    
+                    // Update the select all checkbox state
+                    this.updateSelectAllState(moduleId);
+                    
+                    // Set course start date when first lesson is completed (if no practice dates exist)
+                    if (e.target.checked && !this.progress.courseStartDate) {
+                        this.setCourseStartDate();
+                    }
+                    
+                    // Batch all expensive operations to handle rapid clicking
+                    this.scheduleLessonUpdate();
                 }
-                
-                // Set course start date when first lesson is completed (if no practice dates exist)
-                if (e.target.checked && !this.progress.courseStartDate) {
-                    this.setCourseStartDate();
-                }
-                
-                // Batch all expensive operations to handle rapid clicking
-                this.scheduleLessonUpdate();
             }
         });
 
@@ -332,6 +347,67 @@ class BassPracticeTracker {
         });
 
         this.updateOverallProgress();
+        
+        // Update select all checkboxes to reflect current state
+        this.updateAllSelectAllStates();
+    }
+
+    handleSelectAll(moduleId, checked) {
+        const module = this.lessons.find(m => m.id.toString() === moduleId.toString());
+        if (!module) return;
+
+        // Update all lessons in this module
+        module.lessons.forEach(lesson => {
+            const key = `${moduleId}-${lesson}`;
+            this.progress.lessons[key] = checked;
+            
+            // Update visual state of individual checkboxes
+            const checkbox = document.querySelector(`[data-module="${moduleId}"][data-lesson="${lesson}"]`);
+            if (checkbox) {
+                checkbox.checked = checked;
+                const lessonItem = checkbox.closest('.lesson-item');
+                if (lessonItem) {
+                    lessonItem.classList.toggle('completed', checked);
+                }
+            }
+        });
+
+        // Set course start date when lessons are completed (if no practice dates exist)
+        if (checked && !this.progress.courseStartDate) {
+            this.setCourseStartDate();
+        }
+
+        // Batch all expensive operations
+        this.scheduleLessonUpdate();
+    }
+
+    updateSelectAllState(moduleId) {
+        const module = this.lessons.find(m => m.id.toString() === moduleId.toString());
+        if (!module) return;
+
+        const selectAllCheckbox = document.querySelector(`.select-all-checkbox[data-module="${moduleId}"]`);
+        if (!selectAllCheckbox) return;
+
+        // Check if all lessons in this module are completed
+        const allCompleted = module.lessons.every(lesson => {
+            const key = `${moduleId}-${lesson}`;
+            return this.progress.lessons[key];
+        });
+
+        // Check if some lessons are completed
+        const someCompleted = module.lessons.some(lesson => {
+            const key = `${moduleId}-${lesson}`;
+            return this.progress.lessons[key];
+        });
+
+        selectAllCheckbox.checked = allCompleted;
+        selectAllCheckbox.indeterminate = someCompleted && !allCompleted;
+    }
+
+    updateAllSelectAllStates() {
+        this.lessons.forEach(module => {
+            this.updateSelectAllState(module.id);
+        });
     }
 
     updateOverallProgress() {
