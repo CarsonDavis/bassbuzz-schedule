@@ -1150,7 +1150,16 @@ class BassPracticeTracker {
     }
 
     // Helper function to get local date in YYYY-MM-DD format
-    getLocalDateString(date = new Date()) {
+    // A practice day runs from DAY_STARTS_AT_HOUR to the same hour the next
+    // morning, so a session saved at 4am still counts for the evening before.
+    // Only "today" (no argument) shifts; explicit dates are formatted as given.
+    static DAY_STARTS_AT_HOUR = 5;
+
+    getLocalDateString(date) {
+        if (date === undefined) {
+            date = new Date();
+            date.setHours(date.getHours() - BassPracticeTracker.DAY_STARTS_AT_HOUR);
+        }
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
